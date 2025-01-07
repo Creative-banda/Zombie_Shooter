@@ -11,6 +11,7 @@ WINDOW_HEIGHT = 600
 CELL_SIZE = 20
 PLAYER_SIZE = 18
 ZOMBIE_SIZE = 18
+COLLECT_ITEM_SIZE = 15
 
 BULLET_SIZE = 2 
 
@@ -29,10 +30,18 @@ player_image = "assets/player.png"
 zombie = "assets/zombie.png"
 bullet_image = pygame.image.load("assets/bullet.png")
 health_image = pygame.image.load("assets/health.png")
-bg_image = pygame.image.load("assets/background.jpg")
-wall_image = pygame.image.load("assets/wall2.png")
+bg_image = pygame.image.load("assets/bg_image.jpg")
+wall_image = pygame.image.load("assets/wall3.PNG")
 wall_image = pygame.transform.scale(wall_image, (CELL_SIZE, CELL_SIZE))  # Scale the image to the cell size
+wall_image.set_colorkey(BLACK)  # Set the transparent color to black
 BACKGROUND = pygame.transform.scale(bg_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
+
+
+# load music and sound 
+
+pygame.mixer.music.load('assets/bg_music.mp3')
+pygame.mixer.music.set_volume(0.6)
+pygame.mixer.music.play(-1, 0.0)
 
 # Create the window
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -258,16 +267,18 @@ class Wall:
         self.y = y
         self.image = image
         self.rect = self.image.get_rect(topleft=(x, y))  # Define the rectangle for collision and placement
+        self.image = pygame.transform.scale(self.image, (CELL_SIZE, CELL_SIZE))  # Scale the image to the cell size
+
 
     def draw(self, screen):
-        screen.blit(self.image, (self.x, self.y))  # Draw the image at its position
+        screen.blit(self.image, (self.x, self.y)) 
 
 class AmmoPickup:
     def __init__(self, x, y, image, amount=5):  
         self.x = x
         self.y = y
         self.image = image.convert_alpha()
-        self.image = pygame.transform.scale(self.image, (10, 10))
+        self.image = pygame.transform.scale(self.image, (COLLECT_ITEM_SIZE, COLLECT_ITEM_SIZE))
         self.amount = amount
     
     def draw(self, screen):
@@ -278,7 +289,7 @@ class HealthPickup:
         self.x = x
         self.y = y
         self.image = image.convert_alpha()
-        self.image = pygame.transform.scale(self.image, (10, 10))
+        self.image = pygame.transform.scale(self.image, (COLLECT_ITEM_SIZE, COLLECT_ITEM_SIZE))
         self.amount = amount
     
     def draw(self, screen):
