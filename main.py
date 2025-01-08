@@ -68,7 +68,7 @@ class Player:
         self.speed = 2
         
         # Game attributes
-        self.ammo = 10
+        self.ammo = 100
         self.health = 100
         self.bullets = []  # List to store bullets
 
@@ -133,7 +133,7 @@ class Player:
             # Add the bullet to the list
             bullet_speed = 8  # Speed of the bullet
             bullet = {
-                "x": self.x + PLAYER_SIZE // 2,
+                "x": self.x + PLAYER_SIZE // 2 ,
                 "y": self.y + PLAYER_SIZE // 2,
                 "dx": dx * bullet_speed,
                 "dy": dy * bullet_speed
@@ -171,7 +171,7 @@ class Player:
                         # choose a random sound effect for zombie death
                         random_sound = ['zombie_die1', 'zombie_die2', 'zombie_die3']
                         sound = random.choice(random_sound)
-                        sound = "assets/sound_effect/" + sound + ".mp3"
+                        sound = "assets/sound_effect/zombie_die/" + sound + ".mp3"
                         pygame.mixer.Sound(sound).play()
                         
                         zombies.remove(zombie)  # Remove the zombie
@@ -363,62 +363,67 @@ class HealthPickup:
     def draw(self, screen):
         screen.blit(self.image, (self.x, self.y))
 
+
 def create_maze():
     walls = []
     zombies = []
     pickups = {"ammo": [], "health": []}
     player_start = None
 
-    maze_layout = [
-        "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
-        "W     W    Z      W    Z     W  W      W",
-        "W WWW W WWWWWWW   W WWWWWW W W  W WWW  W",
-        "W W    Z  W   W      W  Z  W W  W      W",
-        "W W WWWWWW W W WWWWW W WWWWWW W WWWWW  W",
-        "W W W  H W W     W       W    W W      W",
-        "W W WWWW W WWWWW W WWWWW  WWWWW W WWW  W",
-        "W W     P   W    W   W W   Z    W      W",
-        "W WWWWWWWWWWW WWWWWW W W WWWWWWWWWWWW  W",
-        "W     W   W   A  W   W W        W      W",
-        "W WWWWW W WWW WWWW WWW W WWWWWWWW WWWWWW",
-        "W       W   Z   W       W W     W      W",
-        "W WWWWWWWWWWWWWWWWWWWWWWW W WWW  WWWWWWW",
-        "W W             W    W          W      W",
-        "W WWWWWWWWW WWWWW WWWWWWWWWWWW WWWW  WWW",
-        "W W        W   W         W      W      W",
-        "W WWWWWWWWWW W W WWWWWWW W WWWWWW WWWWWW",
-        "W Z        W W W       W W      W      W",
-        "W WWWWWWWW W W WWWWWWWWW W WWWW WWW WWWW",
-        "W          W W       W          W      W",
-        "WWWWWWWWW WWWWWWWWWWWWWWW WW WWWWWW WWWW",
-        "W     W    Z      W    Z     W  W      W",
-        "W WWW W WWWWWWW   W WWWWWW W W   WWWWWWW",
-        "W W    Z  W   W      W  Z  W W  W      W",
-        "W W WWWWWW W W WWWWW W WWWWWW W WWWWWWWW",
-        "W W W  H W W     W       W    W W      W",
-        "W W WWWW W WWWWW W WWWWW  WWWWW W WWWWWW",
-        "W W     P   W    W   W W   Z    W      W",
-        "W    W    A                            W",
-        "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
-    ]
+    # Numeric map representation
+    maze_layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 2, 0, 0, 1],
+            [1, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 3, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 3, 0, 0, 0, 1],
+            [1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1],
+            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 0, 1, 0, 4, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 2, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0, 4, 1, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 2, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1],
+            [1, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 3, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 2, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 0, 0, 0, 1, 1, 0, 0, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+            [1, 5, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            [1, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 3, 0, 0, 0, 1],
+            [1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 4, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 4, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 4, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
     
     for y, row in enumerate(maze_layout):
-        for x, char in enumerate(row):
+        if not isinstance(row, (list, tuple)):
+            raise TypeError(f"Expected 'row' to be a list or tuple, got {type(row).__name__}.")
+        for x, cell in enumerate(row):
+            
             world_x = x * CELL_SIZE
             world_y = y * CELL_SIZE
             
-            if char == 'W':
+            if cell == 1:  # Wall
                 walls.append(Wall(world_x, world_y, wall_image))
-            elif char == 'P':
+            elif cell == 5:  # Player start
                 player_start = (world_x, world_y)
-            elif char == 'Z':
+            elif cell == 4:  # Zombie
                 zombies.append(Zombie(world_x, world_y))
-            elif char == 'A':
+            elif cell == 2:  # Ammo pickup
                 pickups["ammo"].append(AmmoPickup(world_x, world_y, bullet_image))
-            elif char == 'H':
+            elif cell == 3:  # Health pickup
                 pickups["health"].append(HealthPickup(world_x, world_y, health_image))
     
     return walls, player_start, zombies, pickups
+
+
 
 def check_pickups(player, pickups):
     # Check for ammo pickups
@@ -447,6 +452,7 @@ def main():
     game_over = False
     won = False
     death_sound_played = False
+    last_hit_time = pygame.time.get_ticks()
 
     while running:
         for event in pygame.event.get():
@@ -499,6 +505,13 @@ def main():
                 zombie.y < player.y + PLAYER_SIZE and zombie.y + ZOMBIE_SIZE > player.y):
                 if player.health > 0:
                     player.health -= 1  # Reduce player health on collision
+                    # Add a timer to prevent playing the sound effect too frequently
+                    if pygame.time.get_ticks() - last_hit_time > 1000:  # 1000 milliseconds = 1 second
+                        # play the random damage sound effect
+                        music = random.choice(['1', '2', '3','4','5'])
+                        sound = "assets/sound_effect/damage_sound/" + music + ".mp3"
+                        pygame.mixer.Sound(sound).play()
+                        last_hit_time = pygame.time.get_ticks()
 
         # Draw bullets
         for bullet in player.bullets:
@@ -506,8 +519,8 @@ def main():
 
         # Draw HUD mean Heads Up Display like (ammo, health)
         font = pygame.font.Font(None, 36)
-        ammo_text = font.render(f"Ammo: {player.ammo}", True, WHITE)
-        health_text = font.render(f"Health: {player.health}", True, WHITE)
+        ammo_text = font.render(f"Ammo: {player.ammo}", True, BLACK)
+        health_text = font.render(f"Health: {player.health}", True, BLACK)
         screen.blit(ammo_text, (10, 10))
         screen.blit(health_text, (10, 50))
 
