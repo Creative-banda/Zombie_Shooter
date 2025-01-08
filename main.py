@@ -1,5 +1,6 @@
 import pygame
 import math
+import random, os
 
 # Initialize Pygame
 pygame.init()
@@ -20,18 +21,17 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
-WALL_BUFFER = 2  # pixels to stay away from walls
 BLUE = (0, 0, 255)
 GRAY = (128, 128, 128)
+BULLET_DAMAGE = 50  # Damage per bullet
 
 
 # Load images
-player_image = "assets/player.png"
-zombie = "assets/zombie.png"
-bullet_image = pygame.image.load("assets/bullet.png")
-health_image = pygame.image.load("assets/health.png")
-bg_image = pygame.image.load("assets/bg_image.jpg")
-wall_image = pygame.image.load("assets/wall3.PNG")
+player_image = "assets/images/player.png"
+bullet_image = pygame.image.load("assets/images/bullet.png")
+health_image = pygame.image.load("assets/images/health.png")
+bg_image = pygame.image.load("assets/images/bg_image.jpg")
+wall_image = pygame.image.load("assets/images/wall3.PNG")
 wall_image = pygame.transform.scale(wall_image, (CELL_SIZE, CELL_SIZE))  # Scale the image to the cell size
 wall_image.set_colorkey(BLACK)  # Set the transparent color to black
 BACKGROUND = pygame.transform.scale(bg_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -39,7 +39,7 @@ BACKGROUND = pygame.transform.scale(bg_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
 
 # load music and sound 
 
-pygame.mixer.music.load('assets/bg_music.mp3')
+pygame.mixer.music.load('assets/sound_effect/bg_music.mp3')
 pygame.mixer.music.set_volume(0.6)
 pygame.mixer.music.play(-1, 0.0)
 
@@ -47,6 +47,7 @@ pygame.mixer.music.play(-1, 0.0)
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Zombie Maze Escape")
 previous_key = None
+ANIMATION_COOLDOWN = 100  # Time between frames (in milliseconds)
 
 
 class Player:
@@ -56,6 +57,8 @@ class Player:
         self.original_image = pygame.image.load(image_path).convert_alpha()
         self.original_image = pygame.transform.scale(self.original_image, (PLAYER_SIZE, PLAYER_SIZE))
         self.image = self.original_image  # Current image to display
+        
+        self.direction = "right" # default direction
         
         # Set initial position (center of the screen or any default position)
         self.x = WINDOW_WIDTH // 2
@@ -80,15 +83,19 @@ class Player:
         if keys[pygame.K_w]:  # Move up
             new_y -= self.speed
             self.image = pygame.transform.rotate(self.original_image, 90)  # No rotation for up
+            self.direction = "up"  # Update direction
         if keys[pygame.K_s]:  # Move down
             new_y += self.speed
             self.image = pygame.transform.rotate(self.original_image, 270)  # Rotate 180 degrees for down
+            self.direction = "down"  # Update direction
         if keys[pygame.K_a]:  # Move left
             new_x -= self.speed
             self.image = pygame.transform.rotate(self.original_image, 180)  # Rotate 90 degrees for left
+            self.direction = "left"  # Update direction
         if keys[pygame.K_d]:  # Move right
             new_x += self.speed
             self.image = pygame.transform.rotate(self.original_image, 0)  # Rotate -90 degrees for right
+            self.direction = "right"  # Update direction
 
         # Check for collisions with walls
         for wall in walls:
@@ -108,28 +115,32 @@ class Player:
         self.x = new_x
         self.y = new_y
 
-
-
-    def shoot(self, target_x, target_y):
+    def shoot(self):
         if self.ammo > 0:  # Check if player has ammo
-            # Calculate direction vector
-            direction_x = target_x - self.x
-            direction_y = target_y - self.y
-            magnitude = math.sqrt(direction_x ** 2 + direction_y ** 2)
-            if magnitude != 0:  # Normalize direction
-                direction_x /= magnitude
-                direction_y /= magnitude
+            # Play the shooting sound
+            pygame.mixer.Sound('assets/sound_effect/shoot.wav').play()
+
+            # Calculate bullet direction based on player's facing direction
+            if self.direction == "up":
+                dx, dy = 0, -1  # Shoot upwards
+            elif self.direction == "down":
+                dx, dy = 0, 1  # Shoot downwards
+            elif self.direction == "left":
+                dx, dy = -1, 0  # Shoot to the left
+            elif self.direction == "right":
+                dx, dy = 1, 0  # Shoot to the right
 
             # Add the bullet to the list
             bullet_speed = 8  # Speed of the bullet
             bullet = {
                 "x": self.x + PLAYER_SIZE // 2,
                 "y": self.y + PLAYER_SIZE // 2,
-                "dx": direction_x * bullet_speed,
-                "dy": direction_y * bullet_speed
+                "dx": dx * bullet_speed,
+                "dy": dy * bullet_speed
             }
             self.bullets.append(bullet)
             self.ammo -= 1  # Decrease ammo count
+
 
     def update_bullets(self, walls, zombies):
         for bullet in self.bullets[:]:  # Iterate over a copy of the list
@@ -153,7 +164,17 @@ class Player:
             for zombie in zombies[:]:
                 if (bullet["x"] > zombie.x and bullet["x"] < zombie.x + ZOMBIE_SIZE and
                     bullet["y"] > zombie.y and bullet["y"] < zombie.y + ZOMBIE_SIZE):
-                    zombies.remove(zombie)  # Remove the zombie
+                    zombie.health -= BULLET_DAMAGE # Reduce zombie health by 50 we can adjust this value as per our need
+                    
+                    if zombie.health <= 0:
+                        
+                        # choose a random sound effect for zombie death
+                        random_sound = ['zombie_die1', 'zombie_die2', 'zombie_die3']
+                        sound = random.choice(random_sound)
+                        sound = "assets/sound_effect/" + sound + ".mp3"
+                        pygame.mixer.Sound(sound).play()
+                        
+                        zombies.remove(zombie)  # Remove the zombie
                     self.bullets.remove(bullet)  # Remove the bullet
                     break
 
@@ -167,16 +188,26 @@ class Player:
 
 
 class Zombie:
-    def __init__(self, x, y, image):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
         self.speed = 1
         self.health = 100
+        self.frame_index = 0 
+        self.update_time = pygame.time.get_ticks()
+        self.animation_list = []
         
-        # Load and scale the zombie image
-        self.original_image = pygame.image.load(image).convert_alpha()
-        self.original_image = pygame.transform.scale(self.original_image, (ZOMBIE_SIZE, ZOMBIE_SIZE))
-        self.image = self.original_image  # Current image to display
+        # Load animation frames
+        for i in range(6):  
+            img_path = os.path.join('assets/images/zombie', f'{i+1}.png')    
+            image = pygame.image.load(img_path).convert_alpha()
+            # Scale the image
+            image = pygame.transform.scale(image, (ZOMBIE_SIZE, ZOMBIE_SIZE))
+            self.animation_list.append(image)
+
+        # Current image to display
+        self.image = self.animation_list[self.frame_index]
+        self.direction = "down"  # Default direction
 
     def move_towards_player(self, player, walls):
         dx = player.x - self.x
@@ -200,6 +231,10 @@ class Zombie:
                     new_y < wall.y + CELL_SIZE):
                     direct_path_blocked = True
                     break
+            
+            # Here is the explanation of the code below first zombie try to move directly towards the player if there is no wall in between them
+            # if there is a wall in between them then zombie will try to move horizontally or vertically towards the player
+            # if both horizontal and vertical movements are blocked then zombie will not move
             
             if direct_path_blocked:
                 # Try horizontal movement only
@@ -230,32 +265,65 @@ class Zombie:
                             break
                     
                     if can_move_vertical:
-                        self.x = new_x
-                        self.y = new_y
+                        # Move vertically
+                        self.x = new_x 
+                        self.y = new_y 
+                        # Update direction to face vertical movement
+                        if dy > 0:
+                            self.direction = "down"
+                        else:
+                            self.direction = "up"
+                    else:
+                        # If both horizontal and vertical movements are blocked, do nothing
+                        pass
                 else:
+                    # Move horizontally
                     self.x = new_x
                     self.y = new_y
+                    # Update direction to face horizontal movement
+                    if dx > 0:
+                        self.direction = "right"
+                    else:
+                        self.direction = "left"
             else:
+                # Move directly towards the player
                 self.x = new_x
                 self.y = new_y
+                # Update direction based on movement
+                if abs(dx) > abs(dy):  # Horizontal movement
+                    if dx > 0:
+                        self.direction = "right"
+                    else:
+                        self.direction = "left"
+                else:  # Vertical movement
+                    if dy > 0:
+                        self.direction = "down"
+                    else:
+                        self.direction = "up"
 
-            # Update the zombie's image based on movement direction
-            self.update_direction(dx, dy)  # Call the method here
+            # Update the zombie's animation and direction
+            self.update_direction()
 
-    def update_direction(self, dx, dy):
+    def update_direction(self):
         """
-        Update the zombie's image rotation based on movement direction.
+        Update the zombie's animation frame and rotate it based on direction.
         """
-        if abs(dx) > abs(dy):  # Horizontal movement
-            if dx > 0:
-                self.image = pygame.transform.rotate(self.original_image, 270)  # Right
-            else:
-                self.image = pygame.transform.rotate(self.original_image, 90)  # Left
-        else:  # Vertical movement
-            if dy > 0:
-                self.image = pygame.transform.rotate(self.original_image, 180)  # Down
-            else:
-                self.image = self.original_image  # Up (no rotation)
+        # Update animation
+        if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
+            self.update_time = pygame.time.get_ticks()
+            self.frame_index += 1
+            if self.frame_index >= len(self.animation_list):
+                self.frame_index = 0
+
+        # Rotate the current frame based on direction
+        if self.direction == "right":
+            self.image = pygame.transform.rotate(self.animation_list[self.frame_index], 270)
+        elif self.direction == "left":
+            self.image = pygame.transform.rotate(self.animation_list[self.frame_index], 90)
+        elif self.direction == "down":
+            self.image = pygame.transform.rotate(self.animation_list[self.frame_index], 180)
+        elif self.direction == "up":
+            self.image = self.animation_list[self.frame_index]  # No rotation for up
 
     def draw(self, screen):
         screen.blit(self.image, (self.x, self.y))
@@ -344,7 +412,7 @@ def create_maze():
             elif char == 'P':
                 player_start = (world_x, world_y)
             elif char == 'Z':
-                zombies.append(Zombie(world_x, world_y, zombie))
+                zombies.append(Zombie(world_x, world_y))
             elif char == 'A':
                 pickups["ammo"].append(AmmoPickup(world_x, world_y, bullet_image))
             elif char == 'H':
@@ -368,25 +436,25 @@ def check_pickups(player, pickups):
             pickups["health"].remove(health)  # Remove the pickup
 
 def main():
+    # setting all the necessary variables to start the game
+    
     clock = pygame.time.Clock()
     walls, player_start, zombies, pickups = create_maze()
     
-    # Initialize player with only the image path
-
-    player = Player("assets/player.png")
+    player = Player(player_image)
     player.x, player.y = player_start  # Set player's starting position
-
     running = True
     game_over = False
     won = False
+    death_sound_played = False
 
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN and not game_over:
-                mouse_x, mouse_y = pygame.mouse.get_pos()
-                player.shoot(mouse_x, mouse_y)
+            elif event.type == pygame.KEYDOWN and not game_over:
+                if event.key == pygame.K_SPACE:  # Space bar pressed
+                    player.shoot()  # Shoot in the player's direction
 
         if not game_over:
             # Check for pickups
@@ -405,7 +473,7 @@ def main():
                 won = True
                 game_over = True
 
-        # Drawing
+        # Drawing background image
         screen.blit(BACKGROUND, (0, 0))
 
         # Draw walls
@@ -436,7 +504,7 @@ def main():
         for bullet in player.bullets:
             pygame.draw.circle(screen, BLUE, (int(bullet["x"]), int(bullet["y"])), BULLET_SIZE)
 
-        # Draw HUD
+        # Draw HUD mean Heads Up Display like (ammo, health)
         font = pygame.font.Font(None, 36)
         ammo_text = font.render(f"Ammo: {player.ammo}", True, WHITE)
         health_text = font.render(f"Health: {player.health}", True, WHITE)
@@ -445,6 +513,14 @@ def main():
 
         # Game over screen
         if game_over:
+            
+            # playing death sound effect
+            
+            if not death_sound_played:  # Play death sound only once if we don't make this condtion it will play sound again and again
+                pygame.mixer.Sound('assets/sound_effect/death.mp3').play()
+                death_sound_played = True  # Set the flag to True to prevent playing again
+                        
+            pygame.mixer.music.fadeout(1000)  # Fade out over 2 seconds
             text = "You Win!" if won else "Game Over!"
             game_over_text = font.render(text, True, WHITE)
             text_rect = game_over_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
@@ -460,10 +536,14 @@ def main():
             if keys[pygame.K_r]:
                 # Reset game state
                 walls, player_start, zombies, pickups = create_maze()
-                player = Player(player_image)  # Reinitialize player
-                player.x, player.y = player_start  # Set player's starting position
+                player = Player(player_image)  # Reinitialize player object for next round
+                player.x, player.y = player_start  # Set player's starting position again
                 game_over = False
                 won = False
+                death_sound_played = False
+                
+                # play the background music again
+                pygame.mixer.music.play(-1, 0.0)
 
         # Update the display
         pygame.display.flip()
