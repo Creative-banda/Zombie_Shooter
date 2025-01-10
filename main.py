@@ -11,32 +11,36 @@ WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 CELL_SIZE = 20
 PLAYER_SIZE = 20
-ZOMBIE_SIZE = 25
+ZOMBIE_SIZE = 20
 COLLECT_ITEM_SIZE = 15
 FPS = 60
-
+BULLET_DAMAGE = 50  # Damage per bullet
 BULLET_SIZE = 2 
 
 # Colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
-GRAY = (128, 128, 128)
-BULLET_DAMAGE = 50  # Damage per bullet
+RED = (255, 0, 0) # Currently no use but maybe in future we can use it
+GREEN = (0, 255, 0) # Currently no use but maybe in future we can use it
+GRAY = (128, 128, 128) # Currently no use but maybe in future we can use it
 
 
 # Load images
 player_image = "assets/images/player.png"
 bullet_image = pygame.image.load("assets/images/bullet.png")
 health_image = pygame.image.load("assets/images/health.png")
+
 bg_image = pygame.image.load("assets/images/bg_image.jpg")
-wall_image = pygame.image.load("assets/images/wall3.PNG")
-wall_image = pygame.transform.scale(wall_image, (CELL_SIZE, CELL_SIZE))  # Scale the image to the cell size
-wall_image.set_colorkey(BLACK)  # Set the transparent color to black
 BACKGROUND = pygame.transform.scale(bg_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
 
+wall_image = pygame.image.load("assets/images/wall3.PNG")
+wall_image = pygame.transform.scale(wall_image, (CELL_SIZE, CELL_SIZE))  # Scale the image to the cell size
+
+# brekable wall image
+
+breakable_wall_image = pygame.image.load("assets/images/break_wall.png")
+breakable_wall_image = pygame.transform.scale(breakable_wall_image, (CELL_SIZE, CELL_SIZE))  # Scale the image to the cell size
 
 # load music and sound 
 
@@ -103,8 +107,8 @@ class Player:
 
         # Check for collisions with walls
         for wall in walls:
-            if (new_x + PLAYER_SIZE > wall.x and new_x < wall.x + CELL_SIZE and
-                new_y + PLAYER_SIZE > wall.y and new_y < wall.y + CELL_SIZE):
+             if (new_x + PLAYER_SIZE > wall[0] .x and new_x < wall[0].x + CELL_SIZE and
+                new_y + PLAYER_SIZE > wall[0].y and new_y < wall[0].y + CELL_SIZE):
                 # Collision detected, undo movement
                 if keys[pygame.K_w]:  # If moving up, reset Y
                     new_y = self.y
@@ -146,7 +150,6 @@ class Player:
             self.bullets.append(bullet)
             self.ammo -= 1  # Decrease ammo count
 
-
     def update_bullets(self, walls, zombies):
         for bullet in self.bullets[:]:  # Iterate over a copy of the list
             bullet["x"] += bullet["dx"]
@@ -159,10 +162,14 @@ class Player:
                 continue
 
             # Check for collisions with walls
-            for wall in walls:
+            for wall, wall_type  in walls:
                 if (bullet["x"] > wall.x and bullet["x"] < wall.x + CELL_SIZE and
                     bullet["y"] > wall.y and bullet["y"] < wall.y + CELL_SIZE):
                     self.bullets.remove(bullet)
+                    if wall_type == "breakable":
+                        isbreak =  wall.take_damage(BULLET_DAMAGE, walls)  # Reduce wall health
+                        if isbreak:
+                            walls.remove((wall, wall_type))
                     break
 
             # Check for collisions with zombies
@@ -193,6 +200,7 @@ class Player:
 
 
 class Zombie:
+    
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -229,7 +237,7 @@ class Zombie:
             
             # Check collision with walls
             direct_path_blocked = False
-            for wall in walls:
+            for wall, wall_type in walls:  # Unpack the tuple into wall and wall_type
                 if (new_x + ZOMBIE_SIZE > wall.x and 
                     new_x < wall.x + CELL_SIZE and
                     new_y + ZOMBIE_SIZE > wall.y and 
@@ -248,10 +256,10 @@ class Zombie:
                 can_move_horizontal = True
                 
                 for wall in walls:
-                    if (new_x + ZOMBIE_SIZE > wall.x and 
-                        new_x < wall.x + CELL_SIZE and
-                        new_y + ZOMBIE_SIZE > wall.y and 
-                        new_y < wall.y + CELL_SIZE):
+                    if (new_x + ZOMBIE_SIZE > wall[0].x and 
+                        new_x < wall[0].x + CELL_SIZE and
+                        new_y + ZOMBIE_SIZE > wall[0].y and 
+                        new_y < wall[0].y + CELL_SIZE):
                         can_move_horizontal = False
                         break
                 
@@ -262,10 +270,10 @@ class Zombie:
                     can_move_vertical = True
                     
                     for wall in walls:
-                        if (new_x + ZOMBIE_SIZE > wall.x and 
-                            new_x < wall.x + CELL_SIZE and
-                            new_y + ZOMBIE_SIZE > wall.y and 
-                            new_y < wall.y + CELL_SIZE):
+                        if (new_x + ZOMBIE_SIZE > wall[0].x and 
+                            new_x < wall[0].x + CELL_SIZE and
+                            new_y + ZOMBIE_SIZE > wall[0].y and 
+                            new_y < wall[0].y + CELL_SIZE):
                             can_move_vertical = False
                             break
                     
@@ -334,19 +342,28 @@ class Zombie:
         screen.blit(self.image, (self.x, self.y))
 
 
-class Wall:
-    def __init__(self, x, y, image):
+class Wall():
+    
+    def __init__(self, x, y, image, health=100):
+        super().__init__()
         self.x = x
         self.y = y
         self.image = image
+        self.health = 100  # Health of the wall
         self.rect = self.image.get_rect(topleft=(x, y))  # Define the rectangle for collision and placement
         self.image = pygame.transform.scale(self.image, (CELL_SIZE, CELL_SIZE))  # Scale the image to the cell size
 
-
     def draw(self, screen):
         screen.blit(self.image, (self.x, self.y)) 
+        
+    def take_damage(self, damage, wall):
+        self.health -= damage
+        if self.health <= 0:
+            return True
+        return False
 
 class AmmoPickup:
+    
     def __init__(self, x, y, image, amount=5):  
         self.x = x
         self.y = y
@@ -357,7 +374,9 @@ class AmmoPickup:
     def draw(self, screen):
         screen.blit(self.image, (self.x, self.y))
 
+
 class HealthPickup:
+    
     def __init__(self, x, y, image, amount=20):
         self.x = x
         self.y = y
@@ -379,31 +398,31 @@ def create_map():
     maze_layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 2, 0, 0, 1],
-            [1, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 3, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 3, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 3, 0, 0, 0, 1],
             [1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1],
             [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 2, 0, 1, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 0, 1, 0, 4, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 2, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 6, 0, 1],
+            [1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0, 4, 1, 0, 0, 0, 0, 6, 0, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1],
-            [1, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 3, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 2, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1],
-            [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 2, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1],
+            [1, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 6, 1, 0, 2, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 2, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
             [1, 0, 0, 0, 1, 1, 0, 0, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
             [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-            [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-            [1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
+            [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 2, 0, 0, 4, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 1, 1, 1, 0, 1, 1, 1, 6, 6, 6, 6, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
             [1, 5, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-            [1, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 3, 0, 0, 0, 1],
-            [1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 4, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 4, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 1],
+            [1, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 3, 0, 0, 0, 1],
+            [1, 0, 0, 1, 1, 6, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 4, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 2, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
     
@@ -416,18 +435,19 @@ def create_map():
             world_y = y * CELL_SIZE
             
             if cell == 1:  # Wall
-                walls.append(Wall(world_x, world_y, wall_image))
-            elif cell == 5:  # Player start
-                player_start = (world_x, world_y)
-            elif cell == 4:  # Zombie
-                zombies.append(Zombie(world_x, world_y))
+                walls.append((Wall(world_x, world_y, wall_image),"unbreakable"))
             elif cell == 2:  # Ammo pickup
                 pickups["ammo"].append(AmmoPickup(world_x, world_y, bullet_image))
             elif cell == 3:  # Health pickup
                 pickups["health"].append(HealthPickup(world_x, world_y, health_image))
+            elif cell == 4:  # Zombie
+                zombies.append(Zombie(world_x, world_y))
+            elif cell == 5:  # Player start
+                player_start = (world_x, world_y)
+            elif cell == 6:
+                walls.append((Wall(world_x, world_y, breakable_wall_image),"breakable"))
     
     return walls, player_start, zombies, pickups
-
 
 
 def check_pickups(player, pickups):
@@ -445,6 +465,7 @@ def check_pickups(player, pickups):
             player.health = min(player.health + 20, 100)  # Add health, max 100
             pickups["health"].remove(health)  # Remove the pickup
 
+
 def main():
     # setting all the necessary variables to start the game
     
@@ -458,6 +479,8 @@ def main():
     won = False
     death_sound_played = False
     last_hit_time = pygame.time.get_ticks()
+    font = pygame.font.Font(None, 36)
+
 
     while running:
         for event in pygame.event.get():
@@ -470,6 +493,9 @@ def main():
         if not game_over:
             # Check for pickups
             check_pickups(player, pickups)
+            
+
+            
 
             # Move the player
             player.move(walls)
@@ -489,7 +515,7 @@ def main():
 
         # Draw walls
         for wall in walls:
-            wall.draw(screen)
+            wall[0].draw(screen)
 
         # Draw pickups
         for ammo in pickups["ammo"]:
@@ -509,7 +535,7 @@ def main():
             if (zombie.x < player.x + PLAYER_SIZE and zombie.x + ZOMBIE_SIZE > player.x and
                 zombie.y < player.y + PLAYER_SIZE and zombie.y + ZOMBIE_SIZE > player.y):
                 if player.health > 0:
-                    player.health -= 1  # Reduce player health on collision
+                    
                     # Add a timer to prevent playing the sound effect too frequently
                     if pygame.time.get_ticks() - last_hit_time > 1000:  # 1000 milliseconds = 1 second
                         # play the random damage sound effect
@@ -517,13 +543,13 @@ def main():
                         sound = "assets/sound_effect/damage_sound/" + music + ".mp3"
                         pygame.mixer.Sound(sound).play()
                         last_hit_time = pygame.time.get_ticks()
+                        player.health -= 20  # Reduce player health on collision
 
         # Draw bullets
         for bullet in player.bullets:
             pygame.draw.circle(screen, BLUE, (int(bullet["x"]), int(bullet["y"])), BULLET_SIZE)
 
         # Draw HUD mean Heads Up Display like (ammo, health)
-        font = pygame.font.Font(None, 36)
         ammo_text = font.render(f"Ammo: {player.ammo}", True, BLACK)
         health_text = font.render(f"Health: {player.health}", True, BLACK)
         screen.blit(ammo_text, (10, 10))
@@ -534,7 +560,7 @@ def main():
             
             # playing death sound effect
             
-            if not death_sound_played and won == False:  # Play death sound only once if we don't make this condtion it will play sound again and again
+            if not death_sound_played and not won:  # Play death sound only once if we don't make this condtion it will play sound again and again
                 death_sound.play()
                 death_sound_played = True  # Set the flag to True to prevent playing again
                         
@@ -570,6 +596,7 @@ def main():
         clock.tick(FPS)
 
     pygame.quit()
+
 
 if __name__ == "__main__":
     main()
