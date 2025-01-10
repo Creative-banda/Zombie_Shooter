@@ -58,7 +58,6 @@ pygame.display.set_caption("Zombie Maze Escape")
 previous_key = None
 ANIMATION_COOLDOWN = 100 
 
-current_level = 1
 
 
 class Player:
@@ -437,10 +436,12 @@ def check_pickups(player, pickups):
             pickups["health"].remove(health)  # Remove the pickup
 
 def main():
+    current_level = 1
+
     # setting all the necessary variables to start the game
     
     clock = pygame.time.Clock()
-    walls, player_start, zombies, pickups = create_map(current_level)
+    walls, player_start, zombies, pickups = create_map()
     
     player = Player(player_image)
     player.x, player.y = player_start  # Set player's starting position
@@ -540,31 +541,36 @@ def main():
                     victory_sound.play()
                     victory_sound_played = True
                     current_level += 1
-                if current_level == MAX_LEVEL:
+                if current_level > MAX_LEVEL:
                     winner_text = font.render("Congratulation You Completed the game !", True, WHITE)
                     winner_rect = winner_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + 50))
                     screen.blit(winner_text, winner_rect)
+                    victory_sound_played = False
                 else:
                     winner_text = font.render("Next Level Loading...", True, WHITE)
                     winner_rect = winner_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + 50))
                     screen.blit(winner_text, winner_rect)
+                    walls, player_start, zombies, pickups = create_map(current_level)
+                    player = Player(player_image)  # Reinitialize player object for next round
+                    player.x, player.y = player_start  # Set player's starting position again
+                    game_over = False
+                    won = False
+                    victory_sound_played = False
                     
             else:
                 text = "Game Over!"  
                 game_over_text = font.render(text, True, WHITE)
                 text_rect = game_over_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
                 screen.blit(game_over_text, text_rect)   
-
-
-            # Check for restart input
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_r]:
-                # Reset game state
-                walls, player_start, zombies, pickups = create_map(2)
-                player = Player(player_image)  # Reinitialize player object for next round
-                player.x, player.y = player_start  # Set player's starting position again
-                game_over = False
-                won = False
+                # Check for restart input
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_r]:
+                    # Reset game state
+                    walls, player_start, zombies, pickups = create_map()
+                    player = Player(player_image)  # Reinitialize player object for next round
+                    player.x, player.y = player_start  # Set player's starting position again
+                    game_over = False
+                    won = False
                 
                 pygame.mixer.music.stop()
                 
