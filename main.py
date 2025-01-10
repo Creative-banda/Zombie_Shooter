@@ -1,6 +1,6 @@
 import pygame
 import math
-import random, os
+import random, os, json
 
 # Initialize Pygame
 pygame.init()
@@ -15,7 +15,8 @@ ZOMBIE_SIZE = 20
 COLLECT_ITEM_SIZE = 15
 FPS = 60
 BULLET_DAMAGE = 50  # Damage per bullet
-BULLET_SIZE = 2 
+BULLET_SIZE = 2
+MAX_LEVEL = 3  # Maximum number of levels in the game
 
 # Colors
 BLACK = (0, 0, 0)
@@ -45,17 +46,19 @@ breakable_wall_image = pygame.transform.scale(breakable_wall_image, (CELL_SIZE, 
 # load music and sound 
 
 pygame.mixer.music.load('assets/sound_effect/bg_music.mp3')
-pygame.mixer.music.set_volume(0.6)
+pygame.mixer.music.set_volume(0.2)
 pygame.mixer.music.play(-1, 0.0)
 
 shoot_sound = pygame.mixer.Sound('assets/sound_effect/shoot.wav')
 death_sound = pygame.mixer.Sound('assets/sound_effect/death.mp3')
-
+victory_sound = pygame.mixer.Sound('assets/sound_effect/victory_sound.mp3')
 # Create the window
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Zombie Maze Escape")
 previous_key = None
-ANIMATION_COOLDOWN = 100  # Time between frames (in milliseconds)
+ANIMATION_COOLDOWN = 100 
+
+current_level = 1
 
 
 class Player:
@@ -197,7 +200,6 @@ class Player:
         # Optionally, draw bullets (if needed)
         for bullet in self.bullets:
             pygame.draw.circle(screen, (255, 0, 0), (int(bullet["x"]), int(bullet["y"])), 3)
-
 
 class Zombie:
     
@@ -341,7 +343,6 @@ class Zombie:
     def draw(self, screen):
         screen.blit(self.image, (self.x, self.y))
 
-
 class Wall():
     
     def __init__(self, x, y, image, health=100):
@@ -374,7 +375,6 @@ class AmmoPickup:
     def draw(self, screen):
         screen.blit(self.image, (self.x, self.y))
 
-
 class HealthPickup:
     
     def __init__(self, x, y, image, amount=20):
@@ -387,44 +387,16 @@ class HealthPickup:
     def draw(self, screen):
         screen.blit(self.image, (self.x, self.y))
 
-
-def create_map():
+def create_map(level=1):
     walls = []
     zombies = []
     pickups = {"ammo": [], "health": []}
     player_start = None
+    
+    # Load the level 1 as json file 
+    with open(f"assets/levels/level{level}.json") as file:
+        maze_layout = json.load(file)
 
-    # Numeric map representation
-    maze_layout = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 2, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 3, 0, 0, 0, 1],
-            [1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1],
-            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 0, 1, 0, 4, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 2, 0, 1, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 6, 0, 1],
-            [1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0, 4, 1, 0, 0, 0, 0, 6, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 2, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1],
-            [1, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 6, 1, 0, 2, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1],
-            [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 2, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-            [1, 0, 0, 0, 1, 1, 0, 0, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-            [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-            [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 2, 0, 0, 4, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-            [1, 1, 1, 1, 0, 1, 1, 1, 6, 6, 6, 6, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
-            [1, 5, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-            [1, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 2, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 3, 0, 0, 0, 1],
-            [1, 0, 0, 1, 1, 6, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 4, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 2, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
     
     for y, row in enumerate(maze_layout):
         if not isinstance(row, (list, tuple)):
@@ -449,7 +421,6 @@ def create_map():
     
     return walls, player_start, zombies, pickups
 
-
 def check_pickups(player, pickups):
     # Check for ammo pickups
     for ammo in pickups["ammo"]:
@@ -465,12 +436,11 @@ def check_pickups(player, pickups):
             player.health = min(player.health + 20, 100)  # Add health, max 100
             pickups["health"].remove(health)  # Remove the pickup
 
-
 def main():
     # setting all the necessary variables to start the game
     
     clock = pygame.time.Clock()
-    walls, player_start, zombies, pickups = create_map()
+    walls, player_start, zombies, pickups = create_map(current_level)
     
     player = Player(player_image)
     player.x, player.y = player_start  # Set player's starting position
@@ -480,6 +450,8 @@ def main():
     death_sound_played = False
     last_hit_time = pygame.time.get_ticks()
     font = pygame.font.Font(None, 36)
+    victory_sound_played = False
+    
 
 
     while running:
@@ -493,9 +465,6 @@ def main():
         if not game_over:
             # Check for pickups
             check_pickups(player, pickups)
-            
-
-            
 
             # Move the player
             player.move(walls)
@@ -565,21 +534,33 @@ def main():
                 death_sound_played = True  # Set the flag to True to prevent playing again
                         
             pygame.mixer.music.fadeout(1000)  # Fade out over 2 seconds
-            text = "You Win!" if won else "Game Over!"
-            game_over_text = font.render(text, True, WHITE)
-            text_rect = game_over_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
-            screen.blit(game_over_text, text_rect)
+            if won:
+                text = "You Win!"
+                if victory_sound_played == False:
+                    victory_sound.play()
+                    victory_sound_played = True
+                    current_level += 1
+                if current_level == MAX_LEVEL:
+                    winner_text = font.render("Congratulation You Completed the game !", True, WHITE)
+                    winner_rect = winner_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + 50))
+                    screen.blit(winner_text, winner_rect)
+                else:
+                    winner_text = font.render("Next Level Loading...", True, WHITE)
+                    winner_rect = winner_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + 50))
+                    screen.blit(winner_text, winner_rect)
+                    
+            else:
+                text = "Game Over!"  
+                game_over_text = font.render(text, True, WHITE)
+                text_rect = game_over_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
+                screen.blit(game_over_text, text_rect)   
 
-            # Add a restart option
-            restart_text = font.render("Press R to Restart", True, WHITE)
-            restart_rect = restart_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + 50))
-            screen.blit(restart_text, restart_rect)
 
             # Check for restart input
             keys = pygame.key.get_pressed()
             if keys[pygame.K_r]:
                 # Reset game state
-                walls, player_start, zombies, pickups = create_map()
+                walls, player_start, zombies, pickups = create_map(2)
                 player = Player(player_image)  # Reinitialize player object for next round
                 player.x, player.y = player_start  # Set player's starting position again
                 game_over = False
@@ -596,7 +577,6 @@ def main():
         clock.tick(FPS)
 
     pygame.quit()
-
 
 if __name__ == "__main__":
     main()
