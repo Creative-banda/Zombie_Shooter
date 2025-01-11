@@ -9,10 +9,10 @@ pygame.mixer.init()
 # Constants
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
-CELL_SIZE = 20
-PLAYER_SIZE = 20
-ZOMBIE_SIZE = 20
-COLLECT_ITEM_SIZE = 15
+CELL_SIZE = 40
+PLAYER_SIZE = 30
+ZOMBIE_SIZE = 30
+COLLECT_ITEM_SIZE = 20
 FPS = 60
 BULLET_DAMAGE = 50  # Damage per bullet
 BULLET_SIZE = 2
@@ -86,6 +86,7 @@ class Player:
         self.image = self.original_image  # Current image to display
         self.alive = True  # Player alive status
         self.direction = "right"  # Default direction
+        self.animation_cool_down = pygame.time.get_ticks()
         
         # Set initial position (center of the screen or any default position)
         self.x = WINDOW_WIDTH // 2
@@ -146,29 +147,31 @@ class Player:
 
     def shoot(self):
         if self.ammo > 0:  # Check if player has ammo
+            if pygame.time.get_ticks() - self.animation_cool_down > 200:
+                self.animation_cool_down = pygame.time.get_ticks()
             # Play the shooting sound
-            shoot_sound.play()
-            
-            # Calculate bullet direction based on player's facing direction
-            if self.direction == "up":
-                dx, dy = 0, -1  # Shoot upwards
-            elif self.direction == "down":
-                dx, dy = 0, 1  # Shoot downwards
-            elif self.direction == "left":
-                dx, dy = -1, 0  # Shoot to the left
-            elif self.direction == "right":
-                dx, dy = 1, 0  # Shoot to the right
+                shoot_sound.play()
+                
+                # Calculate bullet direction based on player's facing direction
+                if self.direction == "up":
+                    dx, dy = 0, -1  # Shoot upwards
+                elif self.direction == "down":
+                    dx, dy = 0, 1  # Shoot downwards
+                elif self.direction == "left":
+                    dx, dy = -1, 0  # Shoot to the left
+                elif self.direction == "right":
+                    dx, dy = 1, 0  # Shoot to the right
 
-            # Add the bullet to the list
-            bullet_speed = 8  # Speed of the bullet
-            bullet = {
-                "x": self.x + PLAYER_SIZE // 2,
-                "y": self.y + PLAYER_SIZE // 2,
-                "dx": dx * bullet_speed,
-                "dy": dy * bullet_speed
-            }
-            self.bullets.append(bullet)
-            self.ammo -= 1  # Decrease ammo count
+                # Add the bullet to the list
+                bullet_speed = 10  # Speed of the bullet
+                bullet = {
+                    "x": self.x + PLAYER_SIZE // 2,
+                    "y": self.y + PLAYER_SIZE // 2,
+                    "dx": dx * bullet_speed,
+                    "dy": dy * bullet_speed
+                }
+                self.bullets.append(bullet)
+                self.ammo -= 1  # Decrease ammo count
 
     def update_bullets(self, walls, zombies):
         for bullet in self.bullets:  # Iterate over a copy of the list
@@ -176,10 +179,10 @@ class Player:
             bullet["y"] += bullet["dy"]
 
             # Remove bullet if it goes off-screen
-            if (bullet["x"] < 0 or bullet["x"] > WINDOW_WIDTH or
-                bullet["y"] < 0 or bullet["y"] > WINDOW_HEIGHT):
-                self.bullets.remove(bullet.x, bullet.y)
-                continue
+            # if (bullet["x"] < 0 or bullet["x"] > WINDOW_WIDTH or
+            #     bullet["y"] < 0 or bullet["y"] > WINDOW_HEIGHT):
+            #     self.bullets.remove(bullet)
+            #     continue
 
             # Check for collisions with walls
             for wall, wall_type in walls:
@@ -528,7 +531,8 @@ def main():
                 game_over = True
 
         # Drawing background image
-        screen.blit(BACKGROUND, (camera.camera.x, camera.camera.y))
+        screen.blit(BACKGROUND, (0, 0))
+
 
         # Draw walls
         for wall in walls:
@@ -569,7 +573,7 @@ def main():
             else:
                 bullet_pos = (int(bullet["x"]), int(bullet["y"]))
             pygame.draw.circle(screen, BLUE, bullet_pos, BULLET_SIZE)
-        player.update_bullets(walls, zombies)
+            player.update_bullets(walls, zombies)
 
         # Draw HUD mean Heads Up Display like (ammo, health)
         ammo_text = font.render(f"Ammo: {player.ammo}", True, BLACK)
