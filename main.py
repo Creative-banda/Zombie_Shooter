@@ -30,7 +30,7 @@ player_image = "assets/images/player.png"
 bullet_image = pygame.image.load("assets/images/bullet.png")
 health_image = pygame.image.load("assets/images/health.png")
 
-bg_image = pygame.image.load("assets/images/background.jpg")
+bg_image = pygame.image.load("assets/images/bg_image.jpg")
 BACKGROUND = pygame.transform.scale(bg_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
 
 wall_image = pygame.image.load("assets/images/wall3.PNG")
@@ -364,6 +364,9 @@ def main():
             elif event.type == pygame.KEYDOWN and not game_over:
                 if event.key == pygame.K_SPACE:  # Space bar pressed
                     player.shoot()  # Shoot in the player's direction
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_r] :
+            player.reload()
 
         if not game_over:
             # Check for pickups
@@ -389,6 +392,7 @@ def main():
 
         # Drawing background image
         screen.blit(BACKGROUND, (0, 0))
+
 
 
         # Draw walls
@@ -484,7 +488,9 @@ def main():
                 won = False
                 victory_sound_played = False  
                 
-
+        
+        ammo_text = f"{player.remaing_ammo}/{player.ammo}"
+        screen.blit(font.render(ammo_text, True, WHITE), (WINDOW_WIDTH // 2, 10))
         # Update the display
         pygame.display.flip()
         clock.tick(FPS)

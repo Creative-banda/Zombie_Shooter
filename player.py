@@ -12,7 +12,7 @@ shoot_sound = pygame.mixer.Sound('assets/sound_effect/shoot.wav')
 
 
 BULLET_DAMAGE = 50  # Damage per bullet
-BULLET_SIZE = 2  # Bullet size
+BULLET_SIZE = 3  # Bullet size
 ZOMBIE_SIZE = 30
 
 
@@ -22,6 +22,9 @@ class Player:
         self.direction = "right"
         self.animation_cool_down = pygame.time.get_ticks()
         self.update_time = pygame.time.get_ticks()
+        self.can_shoot = True
+        self.isReloading = False
+        self.remaing_ammo = 6
         
         self.x = WINDOW_WIDTH // 2
         self.y = WINDOW_HEIGHT // 2
@@ -38,6 +41,8 @@ class Player:
         self.ammo = 100
         self.health = 100
         self.bullets = []
+        self.magzine_size = 6  # Adjust based on your desired magazine capacity
+
 
         # Load animations
         animation_types = ['idle', 'move', 'reload', 'shoot']
@@ -62,6 +67,8 @@ class Player:
         # If we're shooting, wait for animation to complete
         if self.action == 3 and not self.animation_completed:
             return
+        if self.action == 2 and not self.animation_completed:
+            return
             
         # Update action if it's different
         if new_action != self.action:
@@ -69,8 +76,9 @@ class Player:
             self.frame_index = 0
             self.update_time = pygame.time.get_ticks()
             self.animation_completed = False
+            self.isReloading = False
             
-            # Reset can_shoot when starting a new action that's not shooting
+            # Reset c when starting a new action that's not shooting
             if new_action != 3:
                 self.can_shoot = True
 
@@ -116,7 +124,7 @@ class Player:
 
 
     def shoot(self):
-        if self.ammo > 0 and self.can_shoot:
+        if self.remaing_ammo > 0 and self.can_shoot and not self.isReloading:
             self.update_action(3)  # Shoot animation
             self.can_shoot = False  # Prevent shooting until animation completes
             
@@ -142,7 +150,30 @@ class Player:
                     "dy": dy * 10
                 }
                 self.bullets.append(bullet)
-                self.ammo -= 1
+                self.remaing_ammo -= 1
+
+
+    def reload(self):
+        if self.remaing_ammo == self.magzine_size  or self.isReloading:
+            return
+        print(self.remaing_ammo, self.magzine_size)
+        self.update_action(2)  # Reload animation
+        self.isReloading = True  # Prevent actions while reloading
+        self.can_shoot = False  # Prevent shooting during reload
+        
+        # Simulate reload delay (e.g., 2 seconds)
+        if pygame.time.get_ticks() - self.animation_cool_down > 500:
+            self.animation_cool_down = pygame.time.get_ticks()
+            
+            # Calculate bullets to reload
+            bullets_to_reload = min(self.magzine_size, self.ammo)
+            self.remaing_ammo = bullets_to_reload
+            self.ammo -= bullets_to_reload
+            
+            # End reload state
+            self.isReloading = False
+            self.can_shoot = True
+
 
     def update_bullets(self, walls, zombies):
         bullets_to_remove = []
