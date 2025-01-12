@@ -1,6 +1,7 @@
 import pygame
 import math
 import random, os, json
+from player import Player, PLAYER_SIZE, BULLET_SIZE, CELL_SIZE, PLAYER_SIZE
 
 # Initialize Pygame
 pygame.init()
@@ -10,12 +11,9 @@ pygame.mixer.init()
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 CELL_SIZE = 40
-PLAYER_SIZE = 30
 ZOMBIE_SIZE = 30
 COLLECT_ITEM_SIZE = 20
 FPS = 60
-BULLET_DAMAGE = 50  # Damage per bullet
-BULLET_SIZE = 2
 MAX_LEVEL = 3  # Maximum number of levels in the game
 
 # Colors
@@ -32,7 +30,7 @@ player_image = "assets/images/player.png"
 bullet_image = pygame.image.load("assets/images/bullet.png")
 health_image = pygame.image.load("assets/images/health.png")
 
-bg_image = pygame.image.load("assets/images/bg_image.jpg")
+bg_image = pygame.image.load("assets/images/background.jpg")
 BACKGROUND = pygame.transform.scale(bg_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
 
 wall_image = pygame.image.load("assets/images/wall3.PNG")
@@ -49,7 +47,6 @@ pygame.mixer.music.load('assets/sound_effect/bg_music.mp3')
 pygame.mixer.music.set_volume(0.2)
 pygame.mixer.music.play(-1, 0.0)
 
-shoot_sound = pygame.mixer.Sound('assets/sound_effect/shoot.wav')
 death_sound = pygame.mixer.Sound('assets/sound_effect/death.mp3')
 victory_sound = pygame.mixer.Sound('assets/sound_effect/victory_sound.mp3')
 loose_sound = pygame.mixer.Sound('assets/sound_effect/loose.mp3')
@@ -76,147 +73,6 @@ class Camera:
 
         y = -target.rect.centery + int(self.height / 2)
         self.camera = pygame.Rect(x, y, self.width, self.height)
-
-
-class Player:
-    def __init__(self, image_path):
-        # Load the player image and scale it
-        self.original_image = pygame.image.load(image_path).convert_alpha()
-        self.original_image = pygame.transform.scale(self.original_image, (PLAYER_SIZE, PLAYER_SIZE))
-        self.image = self.original_image  # Current image to display
-        self.alive = True  # Player alive status
-        self.direction = "right"  # Default direction
-        self.animation_cool_down = pygame.time.get_ticks()
-        
-        # Set initial position (center of the screen or any default position)
-        self.x = WINDOW_WIDTH // 2
-        self.y = WINDOW_HEIGHT // 2
-        self.rect = pygame.Rect(self.x, self.y, PLAYER_SIZE, PLAYER_SIZE)  # Add rect for camera compatibility
-        
-        # Movement attributes
-        self.speed = 2
-        
-        # Game attributes
-        self.ammo = 100
-        self.health = 100
-        self.bullets = []  # List to store bullets
-
-    def move(self, walls):
-        # Get the state of all keys
-        keys = pygame.key.get_pressed()
-        
-        # Calculate new position based on key presses
-        new_x = self.x
-        new_y = self.y
-        
-        if keys[pygame.K_w]:  # Move up
-            new_y -= self.speed
-            self.image = pygame.transform.rotate(self.original_image, 90)  # No rotation for up
-            self.direction = "up"  # Update direction
-        if keys[pygame.K_s]:  # Move down
-            new_y += self.speed
-            self.image = pygame.transform.rotate(self.original_image, 270)  # Rotate 180 degrees for down
-            self.direction = "down"  # Update direction
-        if keys[pygame.K_a]:  # Move left
-            new_x -= self.speed
-            self.image = pygame.transform.rotate(self.original_image, 180)  # Rotate 90 degrees for left
-            self.direction = "left"  # Update direction
-        if keys[pygame.K_d]:  # Move right
-            new_x += self.speed
-            self.image = pygame.transform.rotate(self.original_image, 0)  # Rotate -90 degrees for right
-            self.direction = "right"  # Update direction
-
-        # Check for collisions with walls
-        for wall in walls:
-            if (new_x + PLAYER_SIZE > wall[0].x and new_x < wall[0].x + CELL_SIZE and
-                new_y + PLAYER_SIZE > wall[0].y and new_y < wall[0].y + CELL_SIZE):
-                # Collision detected, undo movement
-                if keys[pygame.K_w]:  # If moving up, reset Y
-                    new_y = self.y
-                if keys[pygame.K_s]:  # If moving down, reset Y
-                    new_y = self.y
-                if keys[pygame.K_a]:  # If moving left, reset X
-                    new_x = self.x
-                if keys[pygame.K_d]:  # If moving right, reset X
-                    new_x = self.x
-
-        # Update player position and rect
-        self.x = new_x
-        self.y = new_y
-        self.rect.topleft = (self.x, self.y)  # Update the rect position
-
-    def shoot(self):
-        if self.ammo > 0:  # Check if player has ammo
-            if pygame.time.get_ticks() - self.animation_cool_down > 200:
-                self.animation_cool_down = pygame.time.get_ticks()
-            # Play the shooting sound
-                shoot_sound.play()
-                
-                # Calculate bullet direction based on player's facing direction
-                if self.direction == "up":
-                    dx, dy = 0, -1  # Shoot upwards
-                elif self.direction == "down":
-                    dx, dy = 0, 1  # Shoot downwards
-                elif self.direction == "left":
-                    dx, dy = -1, 0  # Shoot to the left
-                elif self.direction == "right":
-                    dx, dy = 1, 0  # Shoot to the right
-
-                # Add the bullet to the list
-                bullet_speed = 10  # Speed of the bullet
-                bullet = {
-                    "x": self.x + PLAYER_SIZE // 2,
-                    "y": self.y + PLAYER_SIZE // 2,
-                    "dx": dx * bullet_speed,
-                    "dy": dy * bullet_speed
-                }
-                self.bullets.append(bullet)
-                self.ammo -= 1  # Decrease ammo count
-
-    def update_bullets(self, walls, zombies):
-        for bullet in self.bullets:  # Iterate over a copy of the list
-            bullet["x"] += bullet["dx"]
-            bullet["y"] += bullet["dy"]
-
-            # Remove bullet if it goes off-screen
-            # if (bullet["x"] < 0 or bullet["x"] > WINDOW_WIDTH or
-            #     bullet["y"] < 0 or bullet["y"] > WINDOW_HEIGHT):
-            #     self.bullets.remove(bullet)
-            #     continue
-
-            # Check for collisions with walls
-            for wall, wall_type in walls:
-                if (bullet["x"] > wall.x and bullet["x"] < wall.x + CELL_SIZE and
-                    bullet["y"] > wall.y and bullet["y"] < wall.y + CELL_SIZE):
-                    self.bullets.remove(bullet)
-                    if wall_type == "breakable":
-                        isbreak = wall.take_damage(BULLET_DAMAGE)  # Reduce wall health
-                        if isbreak:
-                            walls.remove((wall, wall_type))
-                    break
-
-            # Check for collisions with zombies
-            for zombie in zombies[:]:
-                if (bullet["x"] > zombie.x and bullet["x"] < zombie.x + ZOMBIE_SIZE and
-                    bullet["y"] > zombie.y and bullet["y"] < zombie.y + ZOMBIE_SIZE):
-                    zombie.health -= BULLET_DAMAGE  # Reduce zombie health
-                    if zombie.health <= 0:
-                        # Play a random zombie death sound
-                        random_sound = ['zombie_die1', 'zombie_die2', 'zombie_die3']
-                        sound = random.choice(random_sound)
-                        sound = "assets/sound_effect/zombie_die/" + sound + ".mp3"
-                        pygame.mixer.Sound(sound).play()
-                        zombies.remove(zombie)  # Remove the zombie
-                    self.bullets.remove(bullet)  # Remove the bullet
-                    break
-
-    def draw(self, screen, camera=None):
-        # Draw the player image
-        if camera:
-            screen.blit(self.image, camera.apply(self))  # Apply camera offset
-        else:
-            screen.blit(self.image, (self.x, self.y))  # Default rendering without camera
-
 
 class Zombie:
     def __init__(self, x, y):
@@ -486,7 +342,7 @@ def main():
     clock = pygame.time.Clock()
     walls, player_start, zombies, pickups = create_map()
     
-    player = Player(player_image)
+    player = Player(WINDOW_WIDTH, WINDOW_HEIGHT)
     player.x, player.y = player_start  # Set player's starting position
     running = True
     game_over = False
@@ -518,6 +374,7 @@ def main():
 
             # Move the player
             player.move(walls)
+            player.update_animation()
 
             # Update bullets
             player.update_bullets(walls, zombies)
@@ -572,7 +429,7 @@ def main():
                 bullet_pos = (int(bullet["x"] + camera.camera.x), int(bullet["y"] + camera.camera.y))
             else:
                 bullet_pos = (int(bullet["x"]), int(bullet["y"]))
-            pygame.draw.circle(screen, BLUE, bullet_pos, BULLET_SIZE)
+            pygame.draw.circle(screen, RED, bullet_pos, BULLET_SIZE)
             player.update_bullets(walls, zombies)
 
         # Draw HUD mean Heads Up Display like (ammo, health)
@@ -601,7 +458,7 @@ def main():
             if keys[pygame.K_r]:
                 # Reset game state
                 walls, player_start, zombies, pickups = create_map()
-                player = Player(player_image)  # Reinitialize player object for next round
+                player = Player(WINDOW_WIDTH, WINDOW_HEIGHT)  # Reinitialize player object for next round
                 player.x, player.y = player_start  # Set player's starting position again
                 game_over = False
                 won = False
@@ -621,7 +478,7 @@ def main():
                 screen.blit(winner_text, winner_rect)
             else:
                 walls, player_start, zombies, pickups = create_map(current_level)
-                player = Player(player_image)  # Reinitialize player object for next round
+                player = Player(WINDOW_WIDTH, WINDOW_HEIGHT)  # Reinitialize player object for next round
                 player.x, player.y = player_start  # Set player's starting position again
                 game_over = False
                 won = False
