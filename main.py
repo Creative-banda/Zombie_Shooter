@@ -244,8 +244,6 @@ class Guns:
             screen.blit(self.image, (self.x, self.y))  # Default rendering without camera
 
 
-
-
 class Wall:
     def __init__(self, x, y, image, health=100):
         self.x = x
@@ -362,7 +360,7 @@ def check_pickups(player, pickups, guns):
             player.ammo = 50
             player.remaing_ammo = 20
             player.magzine_size = 20
-            player.gun_cooldown = 10
+            player.gun_cooldown = 50
             
             guns.remove(gun)
 
@@ -496,8 +494,7 @@ def main():
             keys = pygame.key.get_pressed()
             if keys[pygame.K_r]:
                 # Reset game state
-                walls, player_start, zombies, pickups = create_map()
-                player = Player(WINDOW_WIDTH, WINDOW_HEIGHT)  # Reinitialize player object for next round
+                walls, player_start, zombies, pickups, guns = create_map()
                 player.x, player.y = player_start  # Set player's starting position again
                 game_over = False
                 won = False
@@ -516,8 +513,7 @@ def main():
                 winner_rect = winner_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + 50))
                 screen.blit(winner_text, winner_rect)
             else:
-                walls, player_start, zombies, pickups = create_map(current_level)
-                player = Player(WINDOW_WIDTH, WINDOW_HEIGHT)  # Reinitialize player object for next round
+                walls, player_start, zombies, pickups, guns = create_map(current_level)
                 player.x, player.y = player_start  # Set player's starting position again
                 game_over = False
                 won = False

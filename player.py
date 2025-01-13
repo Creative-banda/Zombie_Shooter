@@ -49,7 +49,7 @@ class Player:
         self.bullets = []
         self.magzine_size = 6  # Adjust based on your desired magazine capacity
         self.current_gun = "handgun"  # Default gun
-        self.gun_cooldown = 100
+        self.gun_cooldown = 200
 
         # Initialize animation dictionary
         self.animation_dict = {}
@@ -141,10 +141,9 @@ class Player:
     def shoot(self):
         print(self.gun_cooldown)
         if self.remaing_ammo > 0 and self.can_shoot and not self.isReloading:
-            self.update_action(3)  # Shoot animation
-            self.can_shoot = False  # Prevent shooting until animation completes
-            
-            if pygame.time.get_ticks() - self.animation_cool_down > 200:
+            if pygame.time.get_ticks() - self.animation_cool_down > self.gun_cooldown:
+                self.update_action(3)  # Shoot animation
+                self.can_shoot = False  # Prevent shooting until animation completes
                 self.animation_cool_down = pygame.time.get_ticks()
                 shoot_sound.play()
                 
@@ -233,7 +232,7 @@ class Player:
         self.image = self.animation_dict[self.current_gun][self.action][self.frame_index][self.direction]
 
         # Check if enough time has passed since the last update
-        if pygame.time.get_ticks() - self.update_time > self.gun_cooldown:
+        if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
             self.update_time = pygame.time.get_ticks()
             self.frame_index += 1
 
