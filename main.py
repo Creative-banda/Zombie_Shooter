@@ -29,6 +29,7 @@ GRAY = (128, 128, 128) # Currently no use but maybe in future we can use it
 player_image = "assets/images/player.png"
 bullet_image = pygame.image.load("assets/images/bullet.png")
 health_image = pygame.image.load("assets/images/health.png")
+akm_image = pygame.image.load("assets/images/AKM.png")
 
 bg_image = pygame.image.load("assets/images/bg_image.jpg")
 BACKGROUND = pygame.transform.scale(bg_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -228,6 +229,23 @@ class Zombie:
             screen.blit(self.image, (self.x, self.y))  # Default rendering
 
 
+class Guns:
+    def __init__(self, x, y, image):
+        self.x = x
+        self.y = y
+        self.image = image
+        self.rect = pygame.Rect(x, y, COLLECT_ITEM_SIZE * 2, COLLECT_ITEM_SIZE * 2)  # Define the rectangle for collision and placement
+        self.image = pygame.transform.scale(self.image, (COLLECT_ITEM_SIZE * 2, COLLECT_ITEM_SIZE))  # Scale the image to the cell size
+
+    def draw(self, screen, camera=None):
+        if camera:
+            screen.blit(self.image, camera.apply(self))  # Apply camera offset
+        else:
+            screen.blit(self.image, (self.x, self.y))  # Default rendering without camera
+
+
+
+
 class Wall:
     def __init__(self, x, y, image, health=100):
         self.x = x
@@ -288,6 +306,7 @@ class HealthPickup:
 def create_map(level=1):
     walls = []
     zombies = []
+    guns = []
     pickups = {"ammo": [], "health": []}
     player_start = None
     
@@ -316,10 +335,13 @@ def create_map(level=1):
                 player_start = (world_x, world_y)
             elif cell == 6:
                 walls.append((Wall(world_x, world_y, breakable_wall_image),"breakable"))
+            elif cell == 7:
+                guns.append(Guns(world_x, world_y, akm_image))
+                
     
-    return walls, player_start, zombies, pickups
+    return walls, player_start, zombies, pickups, guns
 
-def check_pickups(player, pickups):
+def check_pickups(player, pickups, guns):
     # Check for ammo pickups
     for ammo in pickups["ammo"]:
         if (player.x < ammo.x + 10 and player.x + PLAYER_SIZE > ammo.x and
@@ -333,6 +355,16 @@ def check_pickups(player, pickups):
             player.y < health.y + 10 and player.y + PLAYER_SIZE > health.y):
             player.health = min(player.health + 20, 100)  # Add health, max 100
             pickups["health"].remove(health)  # Remove the pickup
+    
+    for gun in guns[:]:
+        if (player.x < gun.x + 10 and player.x + PLAYER_SIZE > gun.x and player.y < gun.y + 10 and player.y + PLAYER_SIZE > gun.y):
+            player.current_gun = "rifle"
+            player.ammo = 50
+            player.remaing_ammo = 20
+            player.magzine_size = 20
+            player.gun_cooldown = 10
+            
+            guns.remove(gun)
 
 def main():
     current_level = 1
@@ -340,7 +372,7 @@ def main():
     # setting all the necessary variables to start the game
     
     clock = pygame.time.Clock()
-    walls, player_start, zombies, pickups = create_map()
+    walls, player_start, zombies, pickups, guns = create_map()
     
     player = Player(WINDOW_WIDTH, WINDOW_HEIGHT)
     player.x, player.y = player_start  # Set player's starting position
@@ -370,7 +402,7 @@ def main():
 
         if not game_over:
             # Check for pickups
-            check_pickups(player, pickups)
+            check_pickups(player, pickups, guns)
 
             # Update the camera to follow the player
             camera.update(player)
@@ -404,6 +436,9 @@ def main():
             ammo.draw(screen, camera)
         for health in pickups["health"]:
             health.draw(screen, camera)
+        
+        for gun in guns:
+            gun.draw(screen, camera)
 
         # Draw player
         player.draw(screen, camera)

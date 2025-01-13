@@ -11,12 +11,20 @@ shoot_sound = pygame.mixer.Sound('assets/sound_effect/shoot.wav')
 
 
 
-BULLET_DAMAGE = 50  # Damage per bullet
 BULLET_SIZE = 3  # Bullet size
 ZOMBIE_SIZE = 30
+ANIMATION_COOLDOWN = 100
+
+
+gun_damage = {
+    "handgun": 20,
+    "rifle": 50,
+    "shotgun": 100
+}
 
 
 class Player:
+    
     def __init__(self, WINDOW_WIDTH, WINDOW_HEIGHT):
         self.alive = True
         self.direction = "right"
@@ -25,43 +33,49 @@ class Player:
         self.can_shoot = True
         self.isReloading = False
         self.remaing_ammo = 6
-        
+
         self.x = WINDOW_WIDTH // 2
         self.y = WINDOW_HEIGHT // 2
         self.rect = pygame.Rect(self.x, self.y, PLAYER_SIZE, PLAYER_SIZE)
 
-        # Animation states
-        self.animation_list = []
+        # Animation properties
         self.frame_index = 0
         self.action = 0  # 0: idle, 1: move, 2: reload, 3: shoot
-        self.last_action = 0
         self.animation_completed = True
-        
+
         self.speed = 2
         self.ammo = 100
         self.health = 100
         self.bullets = []
         self.magzine_size = 6  # Adjust based on your desired magazine capacity
+        self.current_gun = "handgun"  # Default gun
+        self.gun_cooldown = 100
+
+        # Initialize animation dictionary
+        self.animation_dict = {}
+
+        # Load animations for each gun
+        gun_types = ["handgun", "rifle", "shotgun"]  # List of all gun types
+        animation_types = ["idle", "move", "reload", "shoot"]  # Animation states
+
+        for gun in gun_types:
+            self.animation_dict[gun] = []  # Initialize an empty list for this gun
+            for animation in animation_types:
+                temp_list = []
+                num_of_frames = len(os.listdir(f'assets/images/player/{gun}/{animation}'))
+                for i in range(num_of_frames):
+                    img = pygame.image.load(f'assets/images/player/{gun}/{animation}/{i}.png').convert_alpha()
+                    img = pygame.transform.scale(img, (PLAYER_SIZE, PLAYER_SIZE))
+                    rotated_images = {
+                        "up": pygame.transform.rotate(img, 90),
+                        "down": pygame.transform.rotate(img, 270),
+                        "left": pygame.transform.rotate(img, 180),
+                        "right": img
+                    }
+                    temp_list.append(rotated_images)
+                self.animation_dict[gun].append(temp_list)
 
 
-        # Load animations
-        animation_types = ['idle', 'move', 'reload', 'shoot']
-        for animation in animation_types:
-            temp_list = []
-            num_of_frames = len(os.listdir(f'assets/images/player/handgun/{animation}'))
-            for i in range(num_of_frames):
-                img = pygame.image.load(f'assets/images/player/handgun/{animation}/{i}.png').convert_alpha()
-                img = pygame.transform.scale(img, (PLAYER_SIZE, PLAYER_SIZE))
-                rotated_images = {
-                    "up": pygame.transform.rotate(img, 90),
-                    "down": pygame.transform.rotate(img, 270),
-                    "left": pygame.transform.rotate(img, 180),
-                    "right": img
-                }
-                temp_list.append(rotated_images)
-            self.animation_list.append(temp_list)
-
-        self.image = self.animation_list[self.action][self.frame_index][self.direction]
 
     def update_action(self, new_action):
         # If we're shooting, wait for animation to complete
@@ -69,6 +83,7 @@ class Player:
             return
         if self.action == 2 and not self.animation_completed:
             return
+
             
         # Update action if it's different
         if new_action != self.action:
@@ -124,6 +139,7 @@ class Player:
 
 
     def shoot(self):
+        print(self.gun_cooldown)
         if self.remaing_ammo > 0 and self.can_shoot and not self.isReloading:
             self.update_action(3)  # Shoot animation
             self.can_shoot = False  # Prevent shooting until animation completes
@@ -164,15 +180,14 @@ class Player:
         # Simulate reload delay (e.g., 2 seconds)
         if pygame.time.get_ticks() - self.animation_cool_down > 500:
             self.animation_cool_down = pygame.time.get_ticks()
-            
-            # Calculate bullets to reload
-            bullets_to_reload = min(self.magzine_size, self.ammo)
-            self.remaing_ammo = bullets_to_reload
+            bullets_to_reload = self.magzine_size - self.remaing_ammo
+            self.remaing_ammo = self.magzine_size 
             self.ammo -= bullets_to_reload
             
             # End reload state
             self.isReloading = False
             self.can_shoot = True
+            
 
 
     def update_bullets(self, walls, zombies):
@@ -187,7 +202,7 @@ class Player:
                     bullet["y"] > wall.y and bullet["y"] < wall.y + CELL_SIZE):
                     bullets_to_remove.append(bullet)
                     if wall_type == "breakable":
-                        isbreak = wall.take_damage(BULLET_DAMAGE)  # Reduce wall health
+                        isbreak = wall.take_damage(gun_damage[self.current_gun])  # Reduce wall health
                         if isbreak:
                             walls.remove((wall, wall_type))
                     break
@@ -196,7 +211,7 @@ class Player:
             for zombie in zombies[:]:
                 if (bullet["x"] > zombie.x and bullet["x"] < zombie.x + ZOMBIE_SIZE and
                     bullet["y"] > zombie.y and bullet["y"] < zombie.y + ZOMBIE_SIZE):
-                    zombie.health -= BULLET_DAMAGE  # Reduce zombie health
+                    zombie.health -= gun_damage[self.current_gun]  # Reduce zombie health
                     if zombie.health <= 0:
                         # Play a random zombie death sound
                         random_sound = ['zombie_die1', 'zombie_die2', 'zombie_die3']
@@ -213,18 +228,17 @@ class Player:
 
 
     def update_animation(self):
-        ANIMATION_COOLDOWN = 100
-        
-        # Update image depending on current frame
-        self.image = self.animation_list[self.action][self.frame_index][self.direction]
-        
+
+        # Update image depending on current gun, action, and frame
+        self.image = self.animation_dict[self.current_gun][self.action][self.frame_index][self.direction]
+
         # Check if enough time has passed since the last update
-        if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
+        if pygame.time.get_ticks() - self.update_time > self.gun_cooldown:
             self.update_time = pygame.time.get_ticks()
             self.frame_index += 1
-            
+
             # If the animation has run out
-            if self.frame_index >= len(self.animation_list[self.action]):
+            if self.frame_index >= len(self.animation_dict[self.current_gun][self.action]):
                 self.frame_index = 0
                 # Mark animation as completed
                 self.animation_completed = True
@@ -233,7 +247,9 @@ class Player:
                 if self.action == 3:  # Shooting
                     self.action = 0  # Return to idle
 
+
     def draw(self, screen, camera=None):
+        
         screen.blit(self.image, camera.apply(self))  # Apply camera offset
 
         
