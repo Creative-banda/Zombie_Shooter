@@ -24,6 +24,9 @@ RED = (255, 0, 0) # Currently no use but maybe in future we can use it
 GREEN = (0, 255, 0) # Currently no use but maybe in future we can use it
 GRAY = (128, 128, 128) # Currently no use but maybe in future we can use it
 
+torch_radius = 100
+
+
 
 # Load images
 player_image = "assets/images/player.png"
@@ -339,6 +342,8 @@ def create_map(level=1):
     
     return walls, player_start, zombies, pickups, guns
 
+
+
 def check_pickups(player, pickups, guns):
     # Check for ammo pickups
     for ammo in pickups["ammo"]:
@@ -361,14 +366,22 @@ def check_pickups(player, pickups, guns):
             player.remaing_ammo = 20
             player.magzine_size = 20
             player.gun_cooldown = 50
+            player.gun_sound = pygame.mixer.Sound('assets/sound_effect/gun_sound/rifle.mp3')
             
             guns.remove(gun)
+
+def create_fading_torch(radius):
+    torch_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+    for i in range(radius, 0, -1):
+        alpha = int(255 * (i / radius))  # Gradually reduce alpha
+        color = (0, 0, 0, 255 - alpha)  # Darken towards the edge
+        pygame.draw.circle(torch_surface, color, (radius, radius), i)
+    return torch_surface
 
 def main():
     current_level = 1
 
-    # setting all the necessary variables to start the game
-    
+    # Setting all the necessary variables to start the game
     clock = pygame.time.Clock()
     walls, player_start, zombies, pickups, guns = create_map()
     
@@ -381,11 +394,14 @@ def main():
     last_hit_time = pygame.time.get_ticks()
     font = pygame.font.Font(None, 36)
     victory_sound_played = False
+    
     # Initialize the camera
     camera = Camera(WINDOW_WIDTH, WINDOW_HEIGHT, player)
     bullet_pos = (0, 0)
     
-
+    # Generate the flashlight gradient
+    torch_radius = 100  # Define the torch radius
+    torch_surface = create_fading_torch(torch_radius)
 
     while running:
         for event in pygame.event.get():
@@ -394,9 +410,13 @@ def main():
             elif event.type == pygame.KEYDOWN and not game_over:
                 if event.key == pygame.K_SPACE:  # Space bar pressed
                     player.shoot()  # Shoot in the player's direction
+
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_r] :
+        if keys[pygame.K_r]:
             player.reload()
+
+        # Clear the screen
+        screen.blit(BACKGROUND, (0, 0))
 
         if not game_over:
             # Check for pickups
@@ -420,11 +440,6 @@ def main():
                 won = True
                 game_over = True
 
-        # Drawing background image
-        screen.blit(BACKGROUND, (0, 0))
-
-
-
         # Draw walls
         for wall in walls:
             wall[0].draw(screen, camera)
@@ -435,6 +450,7 @@ def main():
         for health in pickups["health"]:
             health.draw(screen, camera)
         
+        # Draw guns
         for gun in guns:
             gun.draw(screen, camera)
 
@@ -450,11 +466,10 @@ def main():
             if (zombie.x < player.x + PLAYER_SIZE and zombie.x + ZOMBIE_SIZE > player.x and
                 zombie.y < player.y + PLAYER_SIZE and zombie.y + ZOMBIE_SIZE > player.y):
                 if player.health > 0:
-                    
                     # Add a timer to prevent playing the sound effect too frequently
                     if pygame.time.get_ticks() - last_hit_time > 1000:  # 1000 milliseconds = 1 second
-                        # play the random damage sound effect
-                        music = random.choice(['1', '2', '3','4','5'])
+                        # Play the random damage sound effect
+                        music = random.choice(['1', '2', '3', '4', '5'])
                         sound = "assets/sound_effect/damage_sound/" + music + ".mp3"
                         pygame.mixer.Sound(sound).play()
                         last_hit_time = pygame.time.get_ticks()
@@ -469,22 +484,30 @@ def main():
             pygame.draw.circle(screen, RED, bullet_pos, BULLET_SIZE)
             player.update_bullets(walls, zombies)
 
-        # Draw HUD mean Heads Up Display like (ammo, health)
-        ammo_text = font.render(f"Ammo: {player.ammo}", True, BLACK)
-        health_text = font.render(f"Health: {player.health}", True, BLACK)
+        # Create the darkness overlay
+        darkness = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+        darkness.fill((0, 0, 0, 250))
+
+        # Blit the torchlight effect onto the darkness overlay
+        torch_x = player.x + PLAYER_SIZE // 2 - torch_radius + camera.camera.topleft[0]
+        torch_y = player.y + PLAYER_SIZE // 2 - torch_radius + camera.camera.topleft[1]
+        
+        darkness.blit(torch_surface, (torch_x, torch_y), special_flags=pygame.BLEND_RGBA_SUB)
+
+        # Apply the darkness overlay to the screen
+        screen.blit(darkness, (0, 0))
+
+        # Draw HUD (ammo, health)
+        ammo_text = font.render(f"Ammo: {player.ammo}", True, WHITE)
+        health_text = font.render(f"Health: {player.health}", True, WHITE)
         screen.blit(ammo_text, (10, 10))
         screen.blit(health_text, (10, 50))
-
         # Game over screen
         if not player.alive:
-            
-            # playing death sound effect
-            
-            if not death_sound_played and not won:  # Play death sound only once if we don't make this condtion it will play sound again and again
+            if not death_sound_played and not won:  # Play death sound only once
                 death_sound.play()
-                # play loose sound effect 
                 loose_sound.play()
-                death_sound_played = True  # Set the flag to True to prevent playing again
+                death_sound_played = True
             text = "Game Over! Press 'R' to restart"  
             game_over_text = font.render(text, True, WHITE)
             text_rect = game_over_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
@@ -499,7 +522,7 @@ def main():
                 game_over = False
                 won = False
                 death_sound_played = False          
-                # play the background music again
+                # Play the background music again
                 pygame.mixer.music.play(-1, 0.0)
                         
         elif won and player.alive:
@@ -509,7 +532,7 @@ def main():
                 victory_sound_played = True
                 current_level += 1
             if current_level > MAX_LEVEL:
-                winner_text = font.render("Congratulation You Completed the game !", True, WHITE)
+                winner_text = font.render("Congratulations! You Completed the game!", True, WHITE)
                 winner_rect = winner_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + 50))
                 screen.blit(winner_text, winner_rect)
             else:
@@ -518,15 +541,16 @@ def main():
                 game_over = False
                 won = False
                 victory_sound_played = False  
-                
         
         ammo_text = f"{player.remaing_ammo}/{player.ammo}"
         screen.blit(font.render(ammo_text, True, WHITE), (WINDOW_WIDTH // 2, 10))
+        
         # Update the display
         pygame.display.flip()
         clock.tick(FPS)
 
     pygame.quit()
+
 
 if __name__ == "__main__":
     main()

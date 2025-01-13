@@ -7,9 +7,6 @@ CELL_SIZE = 40
 
 pygame.mixer.init()
 
-shoot_sound = pygame.mixer.Sound('assets/sound_effect/shoot.wav')
-
-
 
 BULLET_SIZE = 3  # Bullet size
 ZOMBIE_SIZE = 30
@@ -50,6 +47,7 @@ class Player:
         self.magzine_size = 6  # Adjust based on your desired magazine capacity
         self.current_gun = "handgun"  # Default gun
         self.gun_cooldown = 200
+        self.gun_sound = pygame.mixer.Sound('assets/sound_effect/gun_sound/handgun.mp3')
 
         # Initialize animation dictionary
         self.animation_dict = {}
@@ -145,7 +143,7 @@ class Player:
                 self.update_action(3)  # Shoot animation
                 self.can_shoot = False  # Prevent shooting until animation completes
                 self.animation_cool_down = pygame.time.get_ticks()
-                shoot_sound.play()
+                self.gun_sound.play()
                 
                 # Calculate bullet direction
                 dx, dy = 0, 0
@@ -249,6 +247,4 @@ class Player:
 
     def draw(self, screen, camera=None):
         
-        screen.blit(self.image, camera.apply(self))  # Apply camera offset
-
-        
+        screen.blit(self.image, camera.apply(self))  # Apply camera offset and draw
