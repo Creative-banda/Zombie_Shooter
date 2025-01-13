@@ -1,6 +1,6 @@
 import pygame
 import random
-import os
+import os, math
 
 PLAYER_SIZE = 40
 CELL_SIZE = 40
@@ -11,6 +11,11 @@ pygame.mixer.init()
 BULLET_SIZE = 3  # Bullet size
 ZOMBIE_SIZE = 30
 ANIMATION_COOLDOWN = 100
+
+# Shotgun settings
+BULLET_SPEED = 5  # Speed of bullets
+BULLET_SPREAD = 45  # Degrees of spread
+BULLET_COUNT = 6  # Number of bullets per shotgun shot
 
 
 gun_damage = {
@@ -48,6 +53,8 @@ class Player:
         self.current_gun = "handgun"  # Default gun
         self.gun_cooldown = 200
         self.gun_sound = pygame.mixer.Sound('assets/sound_effect/gun_sound/handgun.mp3')
+        self.isShotgun = False
+        self.isRifle = False
 
         # Initialize animation dictionary
         self.animation_dict = {}
@@ -73,7 +80,21 @@ class Player:
                     temp_list.append(rotated_images)
                 self.animation_dict[gun].append(temp_list)
 
-
+    def switch_gun(self, gun):
+        self.current_gun = gun
+        self.gun_sound = pygame.mixer.Sound(f'assets/sound_effect/gun_sound/{gun}.mp3')
+        if gun == "handgun":
+            self.gun_cooldown = 200
+            self.magzine_size = 6
+            self.ammo = 20
+        elif gun == "rifle":
+            self.gun_cooldown = 500
+            self.magzine_size = 20
+            self.ammo = 40
+        elif gun == "shotgun":
+            self.gun_cooldown = 1000
+            self.magzine_size = 2
+            self.ammo = 10
 
     def update_action(self, new_action):
         # If we're shooting, wait for animation to complete
@@ -137,14 +158,14 @@ class Player:
 
 
     def shoot(self):
-        print(self.gun_cooldown)
         if self.remaing_ammo > 0 and self.can_shoot and not self.isReloading:
             if pygame.time.get_ticks() - self.animation_cool_down > self.gun_cooldown:
                 self.update_action(3)  # Shoot animation
                 self.can_shoot = False  # Prevent shooting until animation completes
                 self.animation_cool_down = pygame.time.get_ticks()
                 self.gun_sound.play()
-                
+
+
                 # Calculate bullet direction
                 dx, dy = 0, 0
                 if self.direction == "up":
@@ -156,14 +177,32 @@ class Player:
                 elif self.direction == "right":
                     dx, dy = 1, 0
 
-                bullet = {
-                    "x": self.x + PLAYER_SIZE // 2,
-                    "y": self.y + PLAYER_SIZE // 2,
-                    "dx": dx * 10,
-                    "dy": dy * 10
-                }
-                self.bullets.append(bullet)
+                if self.current_gun == "shotgun":
+                    # Fire multiple bullets with spread
+                    for _ in range(BULLET_COUNT):
+                        spread_angle = random.uniform(-BULLET_SPREAD / 2, BULLET_SPREAD / 2)
+                        angle = math.atan2(dy, dx) + math.radians(spread_angle)
+                        bullet_dx = math.cos(angle) * BULLET_SPEED
+                        bullet_dy = math.sin(angle) * BULLET_SPEED
+                        bullet = {
+                            "x": self.x + PLAYER_SIZE // 2,
+                            "y": self.y + PLAYER_SIZE // 2,
+                            "dx": bullet_dx,
+                            "dy": bullet_dy
+                        }
+                        self.bullets.append(bullet)
+                else:
+                    # Fire a single bullet
+                    bullet = {
+                        "x": self.x + PLAYER_SIZE // 2,
+                        "y": self.y + PLAYER_SIZE // 2,
+                        "dx": dx * BULLET_SPEED,
+                        "dy": dy * BULLET_SPEED
+                    }
+                    self.bullets.append(bullet)
+
                 self.remaing_ammo -= 1
+
 
 
     def reload(self):
@@ -192,6 +231,8 @@ class Player:
         for bullet in self.bullets:
             bullet["x"] += bullet["dx"]
             bullet["y"] += bullet["dy"]
+        
+        
 
             # Check for collisions with walls
             for wall, wall_type in walls:

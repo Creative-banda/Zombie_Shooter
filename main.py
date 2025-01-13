@@ -24,7 +24,7 @@ RED = (255, 0, 0) # Currently no use but maybe in future we can use it
 GREEN = (0, 255, 0) # Currently no use but maybe in future we can use it
 GRAY = (128, 128, 128) # Currently no use but maybe in future we can use it
 
-torch_radius = 100
+torch_radius = 180
 
 
 
@@ -33,6 +33,7 @@ player_image = "assets/images/player.png"
 bullet_image = pygame.image.load("assets/images/bullet.png")
 health_image = pygame.image.load("assets/images/health.png")
 akm_image = pygame.image.load("assets/images/AKM.png")
+shotgun_image = pygame.image.load("assets/images/shotgun.png")
 
 bg_image = pygame.image.load("assets/images/bg_image.jpg")
 BACKGROUND = pygame.transform.scale(bg_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -337,7 +338,9 @@ def create_map(level=1):
             elif cell == 6:
                 walls.append((Wall(world_x, world_y, breakable_wall_image),"breakable"))
             elif cell == 7:
-                guns.append(Guns(world_x, world_y, akm_image))
+                guns.append((Guns(world_x, world_y, akm_image), "akm"))
+            elif cell == 8:
+                guns.append((Guns(world_x, world_y, shotgun_image), "shotgun"))
                 
     
     return walls, player_start, zombies, pickups, guns
@@ -359,16 +362,15 @@ def check_pickups(player, pickups, guns):
             player.health = min(player.health + 20, 100)  # Add health, max 100
             pickups["health"].remove(health)  # Remove the pickup
     
-    for gun in guns[:]:
+    for gun, gun_type in guns[:]:
+
         if (player.x < gun.x + 10 and player.x + PLAYER_SIZE > gun.x and player.y < gun.y + 10 and player.y + PLAYER_SIZE > gun.y):
-            player.current_gun = "rifle"
-            player.ammo = 50
-            player.remaing_ammo = 20
-            player.magzine_size = 20
-            player.gun_cooldown = 50
-            player.gun_sound = pygame.mixer.Sound('assets/sound_effect/gun_sound/rifle.mp3')
+            if gun_type == "akm":
+                player.isRifle = True
+            elif gun_type == "shotgun":
+                player.isShotgun = True
             
-            guns.remove(gun)
+            guns.remove((gun, gun_type))  # Remove the pickup
 
 def create_fading_torch(radius):
     torch_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
@@ -400,7 +402,6 @@ def main():
     bullet_pos = (0, 0)
     
     # Generate the flashlight gradient
-    torch_radius = 100  # Define the torch radius
     torch_surface = create_fading_torch(torch_radius)
 
     while running:
@@ -414,6 +415,14 @@ def main():
         keys = pygame.key.get_pressed()
         if keys[pygame.K_r]:
             player.reload()
+        # Check for 1 press in keyboard
+        elif keys[pygame.K_1]:
+            player.switch_gun("handgun")
+        # Check for 2 press in keyboard
+        elif keys[pygame.K_2] and player.isRifle:
+            player.switch_gun("rifle")
+        elif keys[pygame.K_3] and player.isShotgun:
+            player.switch_gun("shotgun")
 
         # Clear the screen
         screen.blit(BACKGROUND, (0, 0))
@@ -451,7 +460,7 @@ def main():
             health.draw(screen, camera)
         
         # Draw guns
-        for gun in guns:
+        for gun,gun_type in guns:
             gun.draw(screen, camera)
 
         # Draw player
