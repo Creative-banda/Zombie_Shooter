@@ -1,7 +1,7 @@
 import pygame
 import math
 import random, os, json
-from player import Player, PLAYER_SIZE, BULLET_SIZE, CELL_SIZE, PLAYER_SIZE
+from player import Player, PLAYER_SIZE, BULLET_SIZE, CELL_SIZE, PLAYER_SIZE, gun_info
 
 # Initialize Pygame
 pygame.init()
@@ -47,10 +47,6 @@ breakable_wall_image = pygame.image.load("assets/images/break_wall.png")
 breakable_wall_image = pygame.transform.scale(breakable_wall_image, (CELL_SIZE, CELL_SIZE))  # Scale the image to the cell size
 
 # load music and sound 
-
-pygame.mixer.music.load('assets/sound_effect/bg_music.mp3')
-pygame.mixer.music.set_volume(0.2)
-pygame.mixer.music.play(-1, 0.0)
 
 death_sound = pygame.mixer.Sound('assets/sound_effect/death.mp3')
 victory_sound = pygame.mixer.Sound('assets/sound_effect/victory_sound.mp3')
@@ -396,6 +392,10 @@ def main():
     last_hit_time = pygame.time.get_ticks()
     font = pygame.font.Font(None, 36)
     victory_sound_played = False
+
+    # This text_width is used to display the zombie count in the right corner of the screen
+    text_for_length = font.render(f"Zombies: {len(zombies)}", True, WHITE)
+    text_width = text_for_length.get_width()
     
     # Initialize the camera
     camera = Camera(WINDOW_WIDTH, WINDOW_HEIGHT, player)
@@ -416,12 +416,12 @@ def main():
         if keys[pygame.K_r]:
             player.reload()
         # Check for 1 press in keyboard
-        elif keys[pygame.K_1]:
+        elif keys[pygame.K_1] and not player.isReloading:
             player.switch_gun("handgun")
         # Check for 2 press in keyboard
-        elif keys[pygame.K_2] and player.isRifle:
+        elif keys[pygame.K_2] and player.isRifle and not player.isReloading:
             player.switch_gun("rifle")
-        elif keys[pygame.K_3] and player.isShotgun:
+        elif keys[pygame.K_3] and player.isShotgun and not player.isReloading:
             player.switch_gun("shotgun")
 
         # Clear the screen
@@ -507,7 +507,7 @@ def main():
         screen.blit(darkness, (0, 0))
 
         # Draw HUD (ammo, health)
-        ammo_text = font.render(f"Ammo: {player.ammo}", True, WHITE)
+        ammo_text = font.render(f"Ammo: {gun_info[player.current_gun]['ammo']}", True, WHITE)
         health_text = font.render(f"Health: {player.health}", True, WHITE)
         screen.blit(ammo_text, (10, 10))
         screen.blit(health_text, (10, 50))
@@ -530,9 +530,12 @@ def main():
                 player.x, player.y = player_start  # Set player's starting position again
                 game_over = False
                 won = False
-                death_sound_played = False          
+                death_sound_played = False       
+
+                # Comment out the below line to play the background music again
+
                 # Play the background music again
-                pygame.mixer.music.play(-1, 0.0)
+                # pygame.mixer.music.play(-1, 0.0)
                         
         elif won and player.alive:
             text = "You Win!"
@@ -551,8 +554,13 @@ def main():
                 won = False
                 victory_sound_played = False  
         
-        ammo_text = f"{player.remaing_ammo}/{player.ammo}"
+        ammo_text = f"{gun_info[player.current_gun]['magazine']} / {gun_info[player.current_gun]['ammo']}"
         screen.blit(font.render(ammo_text, True, WHITE), (WINDOW_WIDTH // 2, 10))
+
+        # display the zombie in area
+
+        zombie_text = font.render(f"Zombies: {len(zombies)}", True, WHITE)
+        screen.blit(zombie_text, (WINDOW_WIDTH - text_width, 10))
         
         # Update the display
         pygame.display.flip()

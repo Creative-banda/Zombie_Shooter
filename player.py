@@ -17,11 +17,39 @@ BULLET_SPEED = 5  # Speed of bullets
 BULLET_SPREAD = 45  # Degrees of spread
 BULLET_COUNT = 6  # Number of bullets per shotgun shot
 
+# Sound effects
 
-gun_damage = {
-    "handgun": 20,
-    "rifle": 50,
-    "shotgun": 100
+walk_sound = pygame.mixer.Sound('assets/sound_effect/player_walk.mp3')
+
+
+
+# Gun information
+
+gun_info = {
+    "handgun": {
+        "damage": 20,
+        "ammo": 20,
+        "magazine": 6,
+        "cooldown": 0,
+        "remaining_ammo": 6,
+        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/handgun.mp3')
+    },
+    "rifle": {
+        "damage": 50,
+        "ammo": 40,
+        "magazine": 20,
+        "cooldown": 100,
+        "remaining_ammo": 20,
+        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/rifle.mp3')
+    },
+    "shotgun": {
+        "damage": 100,
+        "ammo": 10,
+        "magazine": 2,
+        "cooldown": 1000,
+        "remaining_ammo": 2,
+        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/shotgun.mp3')
+    }
 }
 
 
@@ -34,7 +62,7 @@ class Player:
         self.update_time = pygame.time.get_ticks()
         self.can_shoot = True
         self.isReloading = False
-        self.remaing_ammo = 6
+        self.is_Walking_Sound = False
 
         self.x = WINDOW_WIDTH // 2
         self.y = WINDOW_HEIGHT // 2
@@ -49,10 +77,7 @@ class Player:
         self.ammo = 100
         self.health = 100
         self.bullets = []
-        self.magzine_size = 6  # Adjust based on your desired magazine capacity
         self.current_gun = "handgun"  # Default gun
-        self.gun_cooldown = 200
-        self.gun_sound = pygame.mixer.Sound('assets/sound_effect/gun_sound/handgun.mp3')
         self.isShotgun = False
         self.isRifle = False
 
@@ -82,19 +107,6 @@ class Player:
 
     def switch_gun(self, gun):
         self.current_gun = gun
-        self.gun_sound = pygame.mixer.Sound(f'assets/sound_effect/gun_sound/{gun}.mp3')
-        if gun == "handgun":
-            self.gun_cooldown = 200
-            self.magzine_size = 6
-            self.ammo = 20
-        elif gun == "rifle":
-            self.gun_cooldown = 500
-            self.magzine_size = 20
-            self.ammo = 40
-        elif gun == "shotgun":
-            self.gun_cooldown = 1000
-            self.magzine_size = 2
-            self.ammo = 10
 
     def update_action(self, new_action):
         # If we're shooting, wait for animation to complete
@@ -102,8 +114,7 @@ class Player:
             return
         if self.action == 2 and not self.animation_completed:
             return
-
-            
+     
         # Update action if it's different
         if new_action != self.action:
             self.action = new_action
@@ -125,14 +136,17 @@ class Player:
             new_y -= self.speed
             self.direction = "up"
             is_moving = True
+                
         elif keys[pygame.K_s]:
             new_y += self.speed
             self.direction = "down"
             is_moving = True
+                
         elif keys[pygame.K_a]:
             new_x -= self.speed
             self.direction = "left"
             is_moving = True
+                
         elif keys[pygame.K_d]:
             new_x += self.speed
             self.direction = "right"
@@ -141,8 +155,16 @@ class Player:
         # Update animation state based on movement
         if is_moving:
             self.update_action(1)  # Move animation
+            if not self.is_Walking_Sound:
+                walk_sound.play(-1)  # Play walking sound
+                self.is_Walking_Sound = True
         else:
             self.update_action(0)  # Idle animation
+            if self.is_Walking_Sound:
+                # wait for the sound to finishs
+                pygame.time.wait(200)
+                walk_sound.stop()  # Stop walking sound
+                self.is_Walking_Sound = False
 
         # Wall collision check
         for wall in walls:
@@ -158,12 +180,15 @@ class Player:
 
 
     def shoot(self):
-        if self.remaing_ammo > 0 and self.can_shoot and not self.isReloading:
-            if pygame.time.get_ticks() - self.animation_cool_down > self.gun_cooldown:
+        if gun_info[self.current_gun]["remaining_ammo"] <= 0:
+            pygame.mixer.Sound('assets/sound_effect/gun_sound/empty_gun.mp3').play()
+            return
+        if self.can_shoot and not self.isReloading:
+            if pygame.time.get_ticks() - self.animation_cool_down > gun_info[self.current_gun]["cooldown"]:
                 self.update_action(3)  # Shoot animation
                 self.can_shoot = False  # Prevent shooting until animation completes
                 self.animation_cool_down = pygame.time.get_ticks()
-                self.gun_sound.play()
+                gun_info[self.current_gun]['sound'].play()
 
 
                 # Calculate bullet direction
@@ -196,19 +221,18 @@ class Player:
                     bullet = {
                         "x": self.x + PLAYER_SIZE // 2,
                         "y": self.y + PLAYER_SIZE // 2,
-                        "dx": dx * BULLET_SPEED,
-                        "dy": dy * BULLET_SPEED
+                        "dx": dx * BULLET_SPEED * 2,
+                        "dy": dy * BULLET_SPEED * 2
                     }
                     self.bullets.append(bullet)
 
-                self.remaing_ammo -= 1
+                gun_info[self.current_gun]['remaining_ammo'] -= 1
 
 
 
     def reload(self):
-        if self.remaing_ammo == self.magzine_size  or self.isReloading:
+        if gun_info[self.current_gun]['remaining_ammo'] == gun_info[self.current_gun]['magazine']  or self.isReloading:
             return
-        print(self.remaing_ammo, self.magzine_size)
         self.update_action(2)  # Reload animation
         self.isReloading = True  # Prevent actions while reloading
         self.can_shoot = False  # Prevent shooting during reload
@@ -216,9 +240,9 @@ class Player:
         # Simulate reload delay (e.g., 2 seconds)
         if pygame.time.get_ticks() - self.animation_cool_down > 500:
             self.animation_cool_down = pygame.time.get_ticks()
-            bullets_to_reload = self.magzine_size - self.remaing_ammo
-            self.remaing_ammo = self.magzine_size 
-            self.ammo -= bullets_to_reload
+            bullets_to_reload = gun_info[self.current_gun]['magazine'] - gun_info[self.current_gun]["remaining_ammo"]
+            gun_info[self.current_gun]["remaining_ammo"] = gun_info[self.current_gun]["magazine"]
+            gun_info[self.current_gun]['ammo'] -= bullets_to_reload
             
             # End reload state
             self.isReloading = False
@@ -231,8 +255,6 @@ class Player:
         for bullet in self.bullets:
             bullet["x"] += bullet["dx"]
             bullet["y"] += bullet["dy"]
-        
-        
 
             # Check for collisions with walls
             for wall, wall_type in walls:
@@ -240,7 +262,7 @@ class Player:
                     bullet["y"] > wall.y and bullet["y"] < wall.y + CELL_SIZE):
                     bullets_to_remove.append(bullet)
                     if wall_type == "breakable":
-                        isbreak = wall.take_damage(gun_damage[self.current_gun])  # Reduce wall health
+                        isbreak = wall.take_damage(gun_info[self.current_gun]['damage'])  # Reduce wall health
                         if isbreak:
                             walls.remove((wall, wall_type))
                     break
@@ -249,7 +271,7 @@ class Player:
             for zombie in zombies[:]:
                 if (bullet["x"] > zombie.x and bullet["x"] < zombie.x + ZOMBIE_SIZE and
                     bullet["y"] > zombie.y and bullet["y"] < zombie.y + ZOMBIE_SIZE):
-                    zombie.health -= gun_damage[self.current_gun]  # Reduce zombie health
+                    zombie.health -= gun_info[self.current_gun]['damage']  # Reduce zombie health
                     if zombie.health <= 0:
                         # Play a random zombie death sound
                         random_sound = ['zombie_die1', 'zombie_die2', 'zombie_die3']
