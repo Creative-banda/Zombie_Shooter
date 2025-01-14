@@ -27,13 +27,26 @@ GRAY = (128, 128, 128) # Currently no use but maybe in future we can use it
 torch_radius = 180
 
 
+# player background music
+
+pygame.mixer.music.load('assets/sound_effect/background_music.mp3')
+pygame.mixer.music.play(-1, 0.0)
+pygame.mixer.music.set_volume(0.5)
+
+
 
 # Load images
 player_image = "assets/images/player.png"
 bullet_image = pygame.image.load("assets/images/bullet.png")
 health_image = pygame.image.load("assets/images/health.png")
+
 akm_image = pygame.image.load("assets/images/AKM.png")
+rifle_ammo_image = pygame.image.load("assets/images/rifle_ammo.png")
+
 shotgun_image = pygame.image.load("assets/images/shotgun.png")
+shotgun_ammo_image = pygame.image.load("assets/images/shotgun_bullet.png")
+
+piston_ammo_image = pygame.image.load("assets/images/piston_bullet.png")
 
 bg_image = pygame.image.load("assets/images/bg_image.jpg")
 BACKGROUND = pygame.transform.scale(bg_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -324,7 +337,7 @@ def create_map(level=1):
             if cell == 1:  # Wall
                 walls.append((Wall(world_x, world_y, wall_image),"unbreakable"))
             elif cell == 2:  # Ammo pickup
-                pickups["ammo"].append(AmmoPickup(world_x, world_y, bullet_image))
+                pickups["ammo"].append((AmmoPickup(world_x, world_y, piston_ammo_image), "handgun"))
             elif cell == 3:  # Health pickup
                 pickups["health"].append(HealthPickup(world_x, world_y, health_image))
             elif cell == 4:  # Zombie
@@ -337,19 +350,27 @@ def create_map(level=1):
                 guns.append((Guns(world_x, world_y, akm_image), "akm"))
             elif cell == 8:
                 guns.append((Guns(world_x, world_y, shotgun_image), "shotgun"))
+            elif cell == 9:
+                pickups['ammo'].append((AmmoPickup(world_x, world_y, shotgun_ammo_image), "shotgun"))
+            elif cell == 10:
+                pickups['ammo'].append((AmmoPickup(world_x, world_y, rifle_ammo_image), "rifle"))
                 
     
     return walls, player_start, zombies, pickups, guns
 
 
-
 def check_pickups(player, pickups, guns):
     # Check for ammo pickups
-    for ammo in pickups["ammo"]:
+    for ammo,ammotype in pickups["ammo"]:
         if (player.x < ammo.x + 10 and player.x + PLAYER_SIZE > ammo.x and
             player.y < ammo.y + 10 and player.y + PLAYER_SIZE > ammo.y):
-            player.ammo += 5  # Add ammo
-            pickups["ammo"].remove(ammo)  # Remove the pickup
+            if ammotype == "handgun":
+                gun_info['handgun']['ammo'] += 10
+            elif ammotype == "rifle":
+                gun_info['rifle']['ammo'] += 10
+            elif ammotype == "shotgun":
+                gun_info['shotgun']['ammo'] += 10
+            pickups["ammo"].remove((ammo, ammotype))  # Remove the pickup
 
     # Check for health pickups
     for health in pickups["health"][:]:
@@ -368,6 +389,7 @@ def check_pickups(player, pickups, guns):
             
             guns.remove((gun, gun_type))  # Remove the pickup
 
+
 def create_fading_torch(radius):
     torch_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
     for i in range(radius, 0, -1):
@@ -375,6 +397,7 @@ def create_fading_torch(radius):
         color = (0, 0, 0, 255 - alpha)  # Darken towards the edge
         pygame.draw.circle(torch_surface, color, (radius, radius), i)
     return torch_surface
+
 
 def main():
     current_level = 1
@@ -408,13 +431,13 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            elif event.type == pygame.KEYDOWN and not game_over:
-                if event.key == pygame.K_SPACE:  # Space bar pressed
-                    player.shoot()  # Shoot in the player's direction
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_r]:
             player.reload()
+
+        elif keys[pygame.K_SPACE]:
+            player.shoot()
         # Check for 1 press in keyboard
         elif keys[pygame.K_1] and not player.isReloading:
             player.switch_gun("handgun")
@@ -454,8 +477,9 @@ def main():
             wall[0].draw(screen, camera)
 
         # Draw pickups
-        for ammo in pickups["ammo"]:
+        for ammo,_ in pickups["ammo"]:
             ammo.draw(screen, camera)
+
         for health in pickups["health"]:
             health.draw(screen, camera)
         
@@ -511,6 +535,15 @@ def main():
         health_text = font.render(f"Health: {player.health}", True, WHITE)
         screen.blit(ammo_text, (10, 10))
         screen.blit(health_text, (10, 50))
+
+        ammo_text = f"{gun_info[player.current_gun]['remaining_ammo']} / {gun_info[player.current_gun]['ammo']}"
+        screen.blit(font.render(ammo_text, True, WHITE), (WINDOW_WIDTH // 2, 10))
+
+        # display the zombie in area
+
+        zombie_text = font.render(f"Zombies: {len(zombies)}", True, WHITE)
+        screen.blit(zombie_text, (WINDOW_WIDTH - text_width, 10))
+
         # Game over screen
         if not player.alive:
             if not death_sound_played and not won:  # Play death sound only once
@@ -554,13 +587,6 @@ def main():
                 won = False
                 victory_sound_played = False  
         
-        ammo_text = f"{gun_info[player.current_gun]['magazine']} / {gun_info[player.current_gun]['ammo']}"
-        screen.blit(font.render(ammo_text, True, WHITE), (WINDOW_WIDTH // 2, 10))
-
-        # display the zombie in area
-
-        zombie_text = font.render(f"Zombies: {len(zombies)}", True, WHITE)
-        screen.blit(zombie_text, (WINDOW_WIDTH - text_width, 10))
         
         # Update the display
         pygame.display.flip()

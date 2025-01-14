@@ -32,7 +32,8 @@ gun_info = {
         "magazine": 6,
         "cooldown": 0,
         "remaining_ammo": 6,
-        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/handgun.mp3')
+        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/handgun.mp3'),
+        "reloading_sound" : pygame.mixer.Sound('assets/sound_effect/gun_sound/handgun_reload.mp3')
     },
     "rifle": {
         "damage": 50,
@@ -40,7 +41,9 @@ gun_info = {
         "magazine": 20,
         "cooldown": 100,
         "remaining_ammo": 20,
-        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/rifle.mp3')
+        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/rifle.mp3'),
+        "reloading_sound" : pygame.mixer.Sound('assets/sound_effect/gun_sound/rifle_reload.mp3')
+
     },
     "shotgun": {
         "damage": 100,
@@ -48,7 +51,9 @@ gun_info = {
         "magazine": 2,
         "cooldown": 1000,
         "remaining_ammo": 2,
-        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/shotgun.mp3')
+        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/shotgun.mp3'),
+        "reloading_sound" : pygame.mixer.Sound('assets/sound_effect/gun_sound/shotgun_reload.mp3')
+
     }
 }
 
@@ -180,10 +185,11 @@ class Player:
 
 
     def shoot(self):
-        if gun_info[self.current_gun]["remaining_ammo"] <= 0:
+        if gun_info[self.current_gun]["remaining_ammo"] <= 0 and pygame.time.get_ticks() - self.animation_cool_down > 500:
             pygame.mixer.Sound('assets/sound_effect/gun_sound/empty_gun.mp3').play()
+            self.animation_cool_down = pygame.time.get_ticks()
             return
-        if self.can_shoot and not self.isReloading:
+        if self.can_shoot and not self.isReloading and gun_info[self.current_gun]["remaining_ammo"] > 0:
             if pygame.time.get_ticks() - self.animation_cool_down > gun_info[self.current_gun]["cooldown"]:
                 self.update_action(3)  # Shoot animation
                 self.can_shoot = False  # Prevent shooting until animation completes
@@ -234,6 +240,7 @@ class Player:
         if gun_info[self.current_gun]['remaining_ammo'] == gun_info[self.current_gun]['magazine']  or self.isReloading:
             return
         self.update_action(2)  # Reload animation
+        gun_info[self.current_gun]['reloading_sound'].play()
         self.isReloading = True  # Prevent actions while reloading
         self.can_shoot = False  # Prevent shooting during reload
         
