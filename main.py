@@ -241,7 +241,7 @@ def main():
 
     # Setting all the necessary variables to start the game
     clock = pygame.time.Clock()
-    walls, player_start, zombies, pickups, guns, dead_body, blood = create_map()
+    walls, player_start, zombies, pickups, guns, dead_body, blood = create_map(current_level)
     
     player = Player(WINDOW_WIDTH, WINDOW_HEIGHT)
     player.x, player.y = player_start  # Set player's starting position
@@ -398,6 +398,10 @@ def main():
         
         fps_text = font.render(f"FPS: {int(clock.get_fps())}", True, WHITE)
         screen.blit(fps_text, (10, WINDOW_HEIGHT - 100))
+        
+        # Display the current level in the bottom right corner
+        level_text = font.render(f"Level: {current_level}", True, WHITE)
+        screen.blit(level_text, (WINDOW_WIDTH - 100, WINDOW_HEIGHT - 100))
 
         # Game over screen
         if not player.alive:
@@ -439,7 +443,9 @@ def main():
                 player.x, player.y = player_start  # Set player's starting position again
                 game_over = False
                 won = False
-                victory_sound_played = False  
+                victory_sound_played = False 
+            
+            
         
         
         # Update the display
