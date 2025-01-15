@@ -166,8 +166,6 @@ class Player:
         else:
             self.update_action(0)  # Idle animation
             if self.is_Walking_Sound:
-                # wait for the sound to finishs
-                pygame.time.wait(200)
                 walk_sound.stop()  # Stop walking sound
                 self.is_Walking_Sound = False
 

@@ -237,7 +237,7 @@ def create_fading_torch(radius):
 
 
 def main():
-    current_level = 1
+    current_level = 2
 
     # Setting all the necessary variables to start the game
     clock = pygame.time.Clock()
@@ -439,7 +439,7 @@ def main():
                 winner_rect = winner_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + 50))
                 screen.blit(winner_text, winner_rect)
             else:
-                walls, player_start, zombies, pickups, guns, dead_body, blood = create_map()
+                walls, player_start, zombies, pickups, guns, dead_body, blood = create_map(current_level)
                 player.x, player.y = player_start  # Set player's starting position again
                 game_over = False
                 won = False
