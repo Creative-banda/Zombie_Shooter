@@ -1,6 +1,6 @@
 import pygame
-import math
-import random, os, json
+from zombie import Zombie, ZOMBIE_SIZE
+import random, json
 from player import Player, PLAYER_SIZE, BULLET_SIZE, CELL_SIZE, PLAYER_SIZE, gun_info
 
 # Initialize Pygame
@@ -10,8 +10,6 @@ pygame.mixer.init()
 # Constants
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
-CELL_SIZE = 40
-ZOMBIE_SIZE = 30
 COLLECT_ITEM_SIZE = 20
 FPS = 60
 MAX_LEVEL = 3  # Maximum number of levels in the game
@@ -20,7 +18,7 @@ MAX_LEVEL = 3  # Maximum number of levels in the game
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 BLUE = (0, 0, 255)
-RED = (255, 0, 0) # Currently no use but maybe in future we can use it
+RED = (255, 0, 0) 
 GREEN = (0, 255, 0) # Currently no use but maybe in future we can use it
 GRAY = (128, 128, 128) # Currently no use but maybe in future we can use it
 
@@ -51,6 +49,9 @@ piston_ammo_image = pygame.image.load("assets/images/piston_bullet.png")
 bg_image = pygame.image.load("assets/images/bg_image.jpg")
 BACKGROUND = pygame.transform.scale(bg_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
 
+gun_pickup_sound = pygame.mixer.Sound('assets/sound_effect/gun_pickup.mp3')
+item_pickup_sound = pygame.mixer.Sound('assets/sound_effect/collect_bullet.mp3')
+
 wall_image = pygame.image.load("assets/images/wall3.PNG")
 wall_image = pygame.transform.scale(wall_image, (CELL_SIZE, CELL_SIZE))  # Scale the image to the cell size
 
@@ -58,6 +59,8 @@ wall_image = pygame.transform.scale(wall_image, (CELL_SIZE, CELL_SIZE))  # Scale
 
 breakable_wall_image = pygame.image.load("assets/images/break_wall.png")
 breakable_wall_image = pygame.transform.scale(breakable_wall_image, (CELL_SIZE, CELL_SIZE))  # Scale the image to the cell size
+
+
 
 # load music and sound 
 
@@ -68,8 +71,6 @@ loose_sound = pygame.mixer.Sound('assets/sound_effect/loose.mp3')
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Zombie Maze Escape")
 previous_key = None
-ANIMATION_COOLDOWN = 100 
-
 
 class Camera:
     def __init__(self, width, height, player):
@@ -87,174 +88,6 @@ class Camera:
 
         y = -target.rect.centery + int(self.height / 2)
         self.camera = pygame.Rect(x, y, self.width, self.height)
-
-class Zombie:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.speed = 1
-        self.health = 100
-        self.frame_index = 0 
-        self.update_time = pygame.time.get_ticks()
-        self.animation_list = []
-        
-        # Load animation frames
-        for i in range(6):  
-            img_path = os.path.join('assets/images/zombie', f'{i+1}.png')    
-            image = pygame.image.load(img_path).convert_alpha()
-            # Scale the image
-            image = pygame.transform.scale(image, (ZOMBIE_SIZE, ZOMBIE_SIZE))
-            self.animation_list.append(image)
-
-        # Current image to display
-        self.image = self.animation_list[self.frame_index]
-        self.direction = "down"  # Default direction
-
-        # Add a rect attribute for collision and rendering
-        self.rect = pygame.Rect(self.x, self.y, ZOMBIE_SIZE, ZOMBIE_SIZE)
-
-    def move_towards_player(self, player, walls):
-        dx = player.x - self.x
-        dy = player.y - self.y
-        distance = math.sqrt(dx**2 + dy**2)
-        
-        if distance > 0:
-            dx = dx / distance * self.speed
-            dy = dy / distance * self.speed
-            
-            # Try direct movement first
-            new_x = self.x + dx
-            new_y = self.y + dy
-            
-            # Check collision with walls
-            direct_path_blocked = False
-            for wall, wall_type in walls:  # Unpack the tuple into wall and wall_type
-                if (new_x + ZOMBIE_SIZE > wall.x and 
-                    new_x < wall.x + CELL_SIZE and
-                    new_y + ZOMBIE_SIZE > wall.y and 
-                    new_y < wall.y + CELL_SIZE):
-                    direct_path_blocked = True
-                    break
-            
-            # Here is the explanation of the code below first zombie try to move directly towards the player if there is no wall in between them
-            # if there is a wall in between them then zombie will try to move horizontally or vertically towards the player
-            # if both horizontal and vertical movements are blocked then zombie will not move
-            
-            if direct_path_blocked:
-                # Try horizontal movement only
-                new_x = self.x + dx
-                new_y = self.y
-                can_move_horizontal = True
-                
-                for wall in walls:
-                    if (new_x + ZOMBIE_SIZE > wall[0].x and 
-                        new_x < wall[0].x + CELL_SIZE and
-                        new_y + ZOMBIE_SIZE > wall[0].y and 
-                        new_y < wall[0].y + CELL_SIZE):
-                        can_move_horizontal = False
-                        break
-                
-                # Try vertical movement only
-                if not can_move_horizontal:
-                    new_x = self.x
-                    new_y = self.y + dy
-                    can_move_vertical = True
-                    
-                    for wall in walls:
-                        if (new_x + ZOMBIE_SIZE > wall[0].x and 
-                            new_x < wall[0].x + CELL_SIZE and
-                            new_y + ZOMBIE_SIZE > wall[0].y and 
-                            new_y < wall[0].y + CELL_SIZE):
-                            can_move_vertical = False
-                            break
-                    
-                    if can_move_vertical:
-                        # Move vertically
-                        self.x = new_x 
-                        self.y = new_y 
-                        # Update direction to face vertical movement
-                        if dy > 0:
-                            self.direction = "down"
-                        else:
-                            self.direction = "up"
-                    else:
-                        # If both horizontal and vertical movements are blocked, do nothing
-                        pass
-                else:
-                    # Move horizontally
-                    self.x = new_x
-                    self.y = new_y
-                    # Update direction to face horizontal movement
-                    if dx > 0:
-                        self.direction = "right"
-                    else:
-                        self.direction = "left"
-            else:
-                # Move directly towards the player
-                self.x = new_x
-                self.y = new_y
-                # Update direction based on movement
-                if abs(dx) > abs(dy):  # Horizontal movement
-                    if dx > 0:
-                        self.direction = "right"
-                    else:
-                        self.direction = "left"
-                else:  # Vertical movement
-                    if dy > 0:
-                        self.direction = "down"
-                    else:
-                        self.direction = "up"
-
-            # Update the zombie's animation and direction
-            self.update_direction()
-
-            # Update the rect position to match the zombie's current position
-            self.rect.topleft = (self.x, self.y)
-
-    def update_direction(self):
-        """
-        Update the zombie's animation frame and rotate it based on direction.
-        """
-        # Update animation
-        if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
-            self.update_time = pygame.time.get_ticks()
-            self.frame_index += 1
-            if self.frame_index >= len(self.animation_list):
-                self.frame_index = 0
-
-        # Rotate the current frame based on direction
-        if self.direction == "right":
-            self.image = pygame.transform.rotate(self.animation_list[self.frame_index], 270)
-        elif self.direction == "left":
-            self.image = pygame.transform.rotate(self.animation_list[self.frame_index], 90)
-        elif self.direction == "down":
-            self.image = pygame.transform.rotate(self.animation_list[self.frame_index], 180)
-        elif self.direction == "up":
-            self.image = self.animation_list[self.frame_index]  # No rotation for up
-
-    def draw(self, screen, camera=None):
-        # Update the rect position to match the zombie's current position
-        self.rect.topleft = (self.x, self.y)
-        
-        if camera:
-            screen.blit(self.image, camera.apply(self))  # Apply camera offset
-        else:
-            screen.blit(self.image, (self.x, self.y))  # Default rendering
-
-
-class Guns:
-    def __init__(self, x, y, image):
-        self.x = x
-        self.y = y
-        self.image = image
-        self.rect = pygame.Rect(x, y, COLLECT_ITEM_SIZE * 2, COLLECT_ITEM_SIZE * 2)  # Define the rectangle for collision and placement
-        self.image = pygame.transform.scale(self.image, (COLLECT_ITEM_SIZE * 2, COLLECT_ITEM_SIZE))  # Scale the image to the cell size
-
-    def draw(self, screen, camera=None):
-        if camera:
-            screen.blit(self.image, camera.apply(self))  # Apply camera offset
-        else:
-            screen.blit(self.image, (self.x, self.y))  # Default rendering without camera
 
 
 class Wall:
@@ -282,12 +115,14 @@ class Wall:
         return False
 
 
-class AmmoPickup:
-    def __init__(self, x, y, image, amount=5):
+class PickUp:
+    def __init__(self, x, y, image, height, width, amount=5):
         self.x = x
         self.y = y
+        self.height = height
+        self.width = width
         self.image = image.convert_alpha()
-        self.image = pygame.transform.scale(self.image, (COLLECT_ITEM_SIZE, COLLECT_ITEM_SIZE))
+        self.image = pygame.transform.scale(self.image, (self.width, self.height))  # Scale the image to the cell size
         self.amount = amount
         self.rect = self.image.get_rect(topleft=(x, y))  # Add rect for camera compatibility
 
@@ -298,26 +133,12 @@ class AmmoPickup:
             screen.blit(self.image, (self.x, self.y))  # Default rendering without camera
 
 
-class HealthPickup:
-    def __init__(self, x, y, image, amount=20):
-        self.x = x
-        self.y = y
-        self.image = image.convert_alpha()
-        self.image = pygame.transform.scale(self.image, (COLLECT_ITEM_SIZE, COLLECT_ITEM_SIZE))
-        self.amount = amount
-        self.rect = self.image.get_rect(topleft=(x, y))  # Add rect for camera compatibility
-
-    def draw(self, screen, camera=None):
-        if camera:
-            screen.blit(self.image, camera.apply(self))  # Apply camera offset
-        else:
-            screen.blit(self.image, (self.x, self.y))  # Default rendering without camera
-
-
-def create_map(level=1):
+def create_map(level=3):
     walls = []
     zombies = []
     guns = []
+    dead_body = []
+    blood = []
     pickups = {"ammo": [], "health": []}
     player_start = None
     
@@ -327,8 +148,6 @@ def create_map(level=1):
 
     
     for y, row in enumerate(maze_layout):
-        if not isinstance(row, (list, tuple)):
-            raise TypeError(f"Expected 'row' to be a list or tuple, got {type(row).__name__}.")
         for x, cell in enumerate(row):
             
             world_x = x * CELL_SIZE
@@ -337,9 +156,9 @@ def create_map(level=1):
             if cell == 1:  # Wall
                 walls.append((Wall(world_x, world_y, wall_image),"unbreakable"))
             elif cell == 2:  # Ammo pickup
-                pickups["ammo"].append((AmmoPickup(world_x, world_y, piston_ammo_image), "handgun"))
+                pickups["ammo"].append((PickUp(world_x, world_y, piston_ammo_image, COLLECT_ITEM_SIZE, COLLECT_ITEM_SIZE), "handgun"))
             elif cell == 3:  # Health pickup
-                pickups["health"].append(HealthPickup(world_x, world_y, health_image))
+                pickups["health"].append(PickUp(world_x, world_y, health_image, COLLECT_ITEM_SIZE, COLLECT_ITEM_SIZE))
             elif cell == 4:  # Zombie
                 zombies.append(Zombie(world_x, world_y))
             elif cell == 5:  # Player start
@@ -347,16 +166,33 @@ def create_map(level=1):
             elif cell == 6:
                 walls.append((Wall(world_x, world_y, breakable_wall_image),"breakable"))
             elif cell == 7:
-                guns.append((Guns(world_x, world_y, akm_image), "akm"))
+                guns.append((PickUp(world_x, world_y, akm_image, COLLECT_ITEM_SIZE , COLLECT_ITEM_SIZE * 2), "akm"))
             elif cell == 8:
-                guns.append((Guns(world_x, world_y, shotgun_image), "shotgun"))
+                guns.append((PickUp(world_x, world_y, shotgun_image, COLLECT_ITEM_SIZE , COLLECT_ITEM_SIZE * 2), "shotgun"))
             elif cell == 9:
-                pickups['ammo'].append((AmmoPickup(world_x, world_y, shotgun_ammo_image), "shotgun"))
+                pickups['ammo'].append((PickUp(world_x, world_y, shotgun_ammo_image, COLLECT_ITEM_SIZE, COLLECT_ITEM_SIZE), "shotgun"))
             elif cell == 10:
-                pickups['ammo'].append((AmmoPickup(world_x, world_y, rifle_ammo_image), "rifle"))
+                pickups['ammo'].append((PickUp(world_x, world_y, rifle_ammo_image, COLLECT_ITEM_SIZE, COLLECT_ITEM_SIZE), "rifle"))
+            elif cell == 11:
+                lis = [0,1,2]
+                random_body = random.choice(lis)
+                img = pygame.image.load(f"assets/images/dead_body/{random_body}.png").convert_alpha()
+                
+                # do a random rotate
+                img = pygame.transform.rotate(img, random.randint(0, 360))
+                dead_body.append(PickUp(world_x, world_y, img, PLAYER_SIZE, PLAYER_SIZE))
+            elif cell == 12:
+                lis = [1,2,4,5,6]
+                random_body = random.choice(lis)
+                img = pygame.image.load(f"assets/images/blood/{random_body}.png").convert_alpha()
+                
+                # do a random rotate
+                img = pygame.transform.rotate(img, random.randint(0, 360))
+                blood.append(PickUp(world_x, world_y, img, PLAYER_SIZE * 2, PLAYER_SIZE * 2))
+            
                 
     
-    return walls, player_start, zombies, pickups, guns
+    return walls, player_start, zombies, pickups, guns, dead_body, blood
 
 
 def check_pickups(player, pickups, guns):
@@ -371,6 +207,7 @@ def check_pickups(player, pickups, guns):
             elif ammotype == "shotgun":
                 gun_info['shotgun']['ammo'] += 10
             pickups["ammo"].remove((ammo, ammotype))  # Remove the pickup
+            item_pickup_sound.play()
 
     # Check for health pickups
     for health in pickups["health"][:]:
@@ -378,6 +215,7 @@ def check_pickups(player, pickups, guns):
             player.y < health.y + 10 and player.y + PLAYER_SIZE > health.y):
             player.health = min(player.health + 20, 100)  # Add health, max 100
             pickups["health"].remove(health)  # Remove the pickup
+            item_pickup_sound.play()
     
     for gun, gun_type in guns[:]:
 
@@ -386,8 +224,8 @@ def check_pickups(player, pickups, guns):
                 player.isRifle = True
             elif gun_type == "shotgun":
                 player.isShotgun = True
-            
             guns.remove((gun, gun_type))  # Remove the pickup
+            gun_pickup_sound.play()
 
 
 def create_fading_torch(radius):
@@ -404,7 +242,7 @@ def main():
 
     # Setting all the necessary variables to start the game
     clock = pygame.time.Clock()
-    walls, player_start, zombies, pickups, guns = create_map()
+    walls, player_start, zombies, pickups, guns, dead_body, blood = create_map()
     
     player = Player(WINDOW_WIDTH, WINDOW_HEIGHT)
     player.x, player.y = player_start  # Set player's starting position
@@ -436,7 +274,7 @@ def main():
         if keys[pygame.K_r]:
             player.reload()
 
-        elif keys[pygame.K_SPACE]:
+        elif keys[pygame.K_SPACE] and not player.isReloading:
             player.shoot()
         # Check for 1 press in keyboard
         elif keys[pygame.K_1] and not player.isReloading:
@@ -449,6 +287,8 @@ def main():
 
         # Clear the screen
         screen.blit(BACKGROUND, (0, 0))
+        
+        
 
         if not game_over:
             # Check for pickups
@@ -483,9 +323,19 @@ def main():
         for health in pickups["health"]:
             health.draw(screen, camera)
         
+        # Draw blood
+        for bloods in blood:
+            bloods.draw(screen, camera)
+            
+        # Draw dead body
+        for body in dead_body:
+            body.draw(screen, camera)
         # Draw guns
-        for gun,gun_type in guns:
+        for gun,_ in guns:
             gun.draw(screen, camera)
+        
+            
+
 
         # Draw player
         player.draw(screen, camera)
@@ -543,6 +393,12 @@ def main():
 
         zombie_text = font.render(f"Zombies: {len(zombies)}", True, WHITE)
         screen.blit(zombie_text, (WINDOW_WIDTH - text_width, 10))
+        
+        
+        # Display game FPS in the bottom left corner
+        
+        fps_text = font.render(f"FPS: {int(clock.get_fps())}", True, WHITE)
+        screen.blit(fps_text, (10, WINDOW_HEIGHT - 100))
 
         # Game over screen
         if not player.alive:
@@ -559,16 +415,15 @@ def main():
             keys = pygame.key.get_pressed()
             if keys[pygame.K_r]:
                 # Reset game state
-                walls, player_start, zombies, pickups, guns = create_map()
+                walls, player_start, zombies, pickups, guns, dead_body, blood = create_map()
+                player = Player(WINDOW_WIDTH, WINDOW_HEIGHT)
                 player.x, player.y = player_start  # Set player's starting position again
                 game_over = False
                 won = False
                 death_sound_played = False       
-
-                # Comment out the below line to play the background music again
-
+                
                 # Play the background music again
-                # pygame.mixer.music.play(-1, 0.0)
+                pygame.mixer.music.play(-1, 0.0)
                         
         elif won and player.alive:
             text = "You Win!"
@@ -581,7 +436,7 @@ def main():
                 winner_rect = winner_text.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + 50))
                 screen.blit(winner_text, winner_rect)
             else:
-                walls, player_start, zombies, pickups, guns = create_map(current_level)
+                walls, player_start, zombies, pickups, guns, dead_body, blood = create_map()
                 player.x, player.y = player_start  # Set player's starting position again
                 game_over = False
                 won = False

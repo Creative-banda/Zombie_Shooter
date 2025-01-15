@@ -2,13 +2,13 @@ import pygame
 import random
 import os, math
 
-PLAYER_SIZE = 40
+PLAYER_SIZE = 35
 CELL_SIZE = 40
 
 pygame.mixer.init()
 
 
-BULLET_SIZE = 3  # Bullet size
+BULLET_SIZE = 2  # Bullet size
 ZOMBIE_SIZE = 30
 ANIMATION_COOLDOWN = 100
 
@@ -51,7 +51,7 @@ gun_info = {
         "magazine": 2,
         "cooldown": 1000,
         "remaining_ammo": 2,
-        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/shotgun.mp3'),
+        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/shotgun_shot.mp3'),
         "reloading_sound" : pygame.mixer.Sound('assets/sound_effect/gun_sound/shotgun_reload.mp3')
 
     }
@@ -175,6 +175,12 @@ class Player:
         for wall in walls:
             if (new_x + PLAYER_SIZE > wall[0].x and new_x < wall[0].x + CELL_SIZE and
                 new_y + PLAYER_SIZE > wall[0].y and new_y < wall[0].y + CELL_SIZE):
+                
+                # turn off the walking sound
+                if self.is_Walking_Sound:
+                    walk_sound.stop()
+                    self.is_Walking_Sound = False
+
                 if keys[pygame.K_w] or keys[pygame.K_s]:
                     new_y = self.y
                 if keys[pygame.K_a] or keys[pygame.K_d]:
