@@ -68,11 +68,11 @@ class Zombie:
                 new_y = self.y
                 can_move_horizontal = True
                 
-                for wall in walls:
-                    if (new_x + ZOMBIE_SIZE > wall[0].x and 
-                        new_x < wall[0].x + CELL_SIZE and
-                        new_y + ZOMBIE_SIZE > wall[0].y and 
-                        new_y < wall[0].y + CELL_SIZE):
+                for wall,_ in walls:
+                    if (new_x + ZOMBIE_SIZE > wall.x and 
+                        new_x < wall.x + CELL_SIZE and
+                        new_y + ZOMBIE_SIZE > wall.y and 
+                        new_y < wall.y + CELL_SIZE):
                         can_move_horizontal = False
                         break
                 
@@ -82,11 +82,11 @@ class Zombie:
                     new_y = self.y + dy
                     can_move_vertical = True
                     
-                    for wall in walls:
-                        if (new_x + ZOMBIE_SIZE > wall[0].x and 
-                            new_x < wall[0].x + CELL_SIZE and
-                            new_y + ZOMBIE_SIZE > wall[0].y and 
-                            new_y < wall[0].y + CELL_SIZE):
+                    for wall,_ in walls:
+                        if (new_x + ZOMBIE_SIZE > wall.x and 
+                            new_x < wall.x + CELL_SIZE and
+                            new_y + ZOMBIE_SIZE > wall.y and 
+                            new_y < wall.y + CELL_SIZE):
                             can_move_vertical = False
                             break
                     

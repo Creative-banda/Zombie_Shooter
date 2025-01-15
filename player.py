@@ -28,7 +28,7 @@ walk_sound = pygame.mixer.Sound('assets/sound_effect/player_walk.mp3')
 gun_info = {
     "handgun": {
         "damage": 20,
-        "ammo": 20,
+        "ammo": 15,
         "magazine": 6,
         "cooldown": 0,
         "remaining_ammo": 6,
@@ -243,18 +243,25 @@ class Player:
 
 
     def reload(self):
-        if gun_info[self.current_gun]['remaining_ammo'] == gun_info[self.current_gun]['magazine']  or self.isReloading:
+        if gun_info[self.current_gun]['remaining_ammo'] == gun_info[self.current_gun]['magazine']  or self.isReloading or gun_info[self.current_gun]['ammo'] <= 0:
             return
         self.update_action(2)  # Reload animation
         gun_info[self.current_gun]['reloading_sound'].play()
         self.isReloading = True  # Prevent actions while reloading
         self.can_shoot = False  # Prevent shooting during reload
         
-        # Simulate reload delay (e.g., 2 seconds)
-        if pygame.time.get_ticks() - self.animation_cool_down > 500:
+        # Simulate reload delay
+        if pygame.time.get_ticks() - self.animation_cool_down > 600:
             self.animation_cool_down = pygame.time.get_ticks()
+            
             bullets_to_reload = gun_info[self.current_gun]['magazine'] - gun_info[self.current_gun]["remaining_ammo"]
-            gun_info[self.current_gun]["remaining_ammo"] = gun_info[self.current_gun]["magazine"]
+            
+            if gun_info[self.current_gun]['ammo'] < bullets_to_reload:
+                gun_info[self.current_gun]["remaining_ammo"] = gun_info[self.current_gun]['ammo']
+                bullets_to_reload = gun_info[self.current_gun]['ammo']
+            else:      
+                gun_info[self.current_gun]["remaining_ammo"] = gun_info[self.current_gun]["magazine"]
+
             gun_info[self.current_gun]['ammo'] -= bullets_to_reload
             
             # End reload state

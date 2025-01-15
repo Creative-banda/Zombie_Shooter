@@ -133,7 +133,7 @@ class PickUp:
             screen.blit(self.image, (self.x, self.y))  # Default rendering without camera
 
 
-def create_map(level=3):
+def create_map(level=1):
     walls = []
     zombies = []
     guns = []
