@@ -69,8 +69,7 @@ victory_sound = pygame.mixer.Sound('assets/sound_effect/victory_sound.mp3')
 loose_sound = pygame.mixer.Sound('assets/sound_effect/loose.mp3')
 # Create the window
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-pygame.display.set_caption("Zombie Maze Escape")
-previous_key = None
+pygame.display.set_caption("Zombie Shooter")
 
 class Camera:
     def __init__(self, width, height, player):
@@ -271,7 +270,7 @@ def main():
                 running = False
 
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_r]:
+        if keys[pygame.K_r] and not player.isReloading:
             player.reload()
 
         elif keys[pygame.K_SPACE] and not player.isReloading:

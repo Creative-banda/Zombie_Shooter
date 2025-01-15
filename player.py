@@ -191,14 +191,15 @@ class Player:
 
 
     def shoot(self):
+        
         if gun_info[self.current_gun]["remaining_ammo"] <= 0 and pygame.time.get_ticks() - self.animation_cool_down > 500:
             pygame.mixer.Sound('assets/sound_effect/gun_sound/empty_gun.mp3').play()
             self.animation_cool_down = pygame.time.get_ticks()
             return
         if self.can_shoot and not self.isReloading and gun_info[self.current_gun]["remaining_ammo"] > 0:
+            self.can_shoot = False  # Prevent shooting until animation completes
             if pygame.time.get_ticks() - self.animation_cool_down > gun_info[self.current_gun]["cooldown"]:
                 self.update_action(3)  # Shoot animation
-                self.can_shoot = False  # Prevent shooting until animation completes
                 self.animation_cool_down = pygame.time.get_ticks()
                 gun_info[self.current_gun]['sound'].play()
 
@@ -243,7 +244,7 @@ class Player:
 
 
     def reload(self):
-        if gun_info[self.current_gun]['remaining_ammo'] == gun_info[self.current_gun]['magazine']  or self.isReloading or gun_info[self.current_gun]['ammo'] <= 0:
+        if (gun_info[self.current_gun]['remaining_ammo'] == gun_info[self.current_gun]['magazine']  or self.isReloading or gun_info[self.current_gun]['ammo'] <= 0):
             return
         self.update_action(2)  # Reload animation
         gun_info[self.current_gun]['reloading_sound'].play()
@@ -251,7 +252,7 @@ class Player:
         self.can_shoot = False  # Prevent shooting during reload
         
         # Simulate reload delay
-        if pygame.time.get_ticks() - self.animation_cool_down > 600:
+        if pygame.time.get_ticks() - self.animation_cool_down > 200:
             self.animation_cool_down = pygame.time.get_ticks()
             
             bullets_to_reload = gun_info[self.current_gun]['magazine'] - gun_info[self.current_gun]["remaining_ammo"]
@@ -264,8 +265,7 @@ class Player:
 
             gun_info[self.current_gun]['ammo'] -= bullets_to_reload
             
-            # End reload state
-            self.isReloading = False
+
             self.can_shoot = True
             
 
