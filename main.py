@@ -1,11 +1,15 @@
 import pygame
 from zombie import Zombie, ZOMBIE_SIZE
-import random, json
+import random, json, pathlib
 from player import Player, PLAYER_SIZE, BULLET_SIZE, CELL_SIZE, PLAYER_SIZE, gun_info, unchanged_details
 
 # Initialize Pygame
 pygame.init()
 pygame.mixer.init()
+
+# take current working dir
+current_path = pathlib.Path().absolute()
+
 
 # Constants
 WINDOW_WIDTH = 800
@@ -27,48 +31,48 @@ torch_radius = 180
 
 # player background music
 
-pygame.mixer.music.load('assets/sound_effect/background_music.mp3')
+pygame.mixer.music.load(str(current_path) +'/assets/sound_effect/background_music.mp3')
 pygame.mixer.music.play(-1, 0.0)
 pygame.mixer.music.set_volume(0.5)
 
 
 
 # Load images
-player_image = "assets/images/player.png"
-bullet_image = pygame.image.load("assets/images/bullet.png")
-health_image = pygame.image.load("assets/images/health.png")
+player_image = str(current_path) + "/assets/images/player.png"
+bullet_image = pygame.image.load(str(current_path) + "/assets/images/bullet.png")
+health_image = pygame.image.load(str(current_path) + "/assets/images/health.png")
 
-akm_image = pygame.image.load("assets/images/AKM.png")
-rifle_ammo_image = pygame.image.load("assets/images/rifle_ammo.png")
+akm_image = pygame.image.load(str(current_path) + "/assets/images/AKM.png")
+rifle_ammo_image = pygame.image.load(str(current_path) + "/assets/images/rifle_ammo.png")
 
-shotgun_image = pygame.image.load("assets/images/shotgun.png")
-shotgun_ammo_image = pygame.image.load("assets/images/shotgun_bullet.png")
+shotgun_image = pygame.image.load(str(current_path) + "/assets/images/shotgun.png")
+shotgun_ammo_image = pygame.image.load(str(current_path) + "/assets/images/shotgun_bullet.png")
 
-piston_ammo_image = pygame.image.load("assets/images/piston_bullet.png")
+piston_ammo_image = pygame.image.load(str(current_path) + "/assets/images/piston_bullet.png")
 
-bg_image = pygame.image.load("assets/images/bg_image.jpg")
+bg_image = pygame.image.load(str(current_path) + "/assets/images/bg_image.jpg")
 BACKGROUND = pygame.transform.scale(bg_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
 
-gun_pickup_sound = pygame.mixer.Sound('assets/sound_effect/gun_pickup.mp3')
-item_pickup_sound = pygame.mixer.Sound('assets/sound_effect/collect_bullet.mp3')
+gun_pickup_sound = pygame.mixer.Sound(str(current_path) +'/assets/sound_effect/gun_pickup.mp3')
+item_pickup_sound = pygame.mixer.Sound(str(current_path) +'/assets/sound_effect/collect_bullet.mp3')
 
-wall_image = pygame.image.load("assets/images/wall3.PNG")
+wall_image = pygame.image.load(str(current_path) + "/assets/images/wall3.PNG")
 wall_image = pygame.transform.scale(wall_image, (CELL_SIZE, CELL_SIZE))  # Scale the image to the cell size
 
 # brekable wall image
 
-breakable_wall_image = pygame.image.load("assets/images/break_wall.png")
+breakable_wall_image = pygame.image.load(str(current_path) + "/assets/images/break_wall.png")
 breakable_wall_image = pygame.transform.scale(breakable_wall_image, (CELL_SIZE, CELL_SIZE))  # Scale the image to the cell size
 
-dead_zombie_image = pygame.image.load("assets/images/dead_zombie.png")
+dead_zombie_image = pygame.image.load(str(current_path) + "/assets/images/dead_zombie.png")
 dead_zombie_image = pygame.transform.scale(dead_zombie_image, (ZOMBIE_SIZE, ZOMBIE_SIZE))
 
 
 # load music and sound 
 
-death_sound = pygame.mixer.Sound('assets/sound_effect/death.mp3')
-victory_sound = pygame.mixer.Sound('assets/sound_effect/victory_sound.mp3')
-loose_sound = pygame.mixer.Sound('assets/sound_effect/loose.mp3')
+death_sound = pygame.mixer.Sound(str(current_path) +'/assets/sound_effect/death.mp3')
+victory_sound = pygame.mixer.Sound(str(current_path) +'/assets/sound_effect/victory_sound.mp3')
+loose_sound = pygame.mixer.Sound(str(current_path) +'/assets/sound_effect/loose.mp3')
 # Create the window
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Zombie Shooter")
@@ -144,7 +148,7 @@ def create_map(level=1):
     player_start = None
     
     # Load the level 1 as json file 
-    with open(f"assets/levels/level{level}.json") as file:
+    with open(f"{current_path}/assets/levels/level{level}.json") as file:
         maze_layout = json.load(file)
 
     
@@ -177,7 +181,7 @@ def create_map(level=1):
             elif cell == 11:
                 lis = [0,1,2]
                 random_body = random.choice(lis)
-                img = pygame.image.load(f"assets/images/dead_body/{random_body}.png").convert_alpha()
+                img = pygame.image.load(f"{current_path}/assets/images/dead_body/{random_body}.png").convert_alpha()
                 
                 # do a random rotate
                 img = pygame.transform.rotate(img, random.randint(0, 360))
@@ -185,7 +189,7 @@ def create_map(level=1):
             elif cell == 12:
                 lis = [1,2,4,5,6]
                 random_body = random.choice(lis)
-                img = pygame.image.load(f"assets/images/blood/{random_body}.png").convert_alpha()
+                img = pygame.image.load(f"{current_path}/assets/images/blood/{random_body}.png").convert_alpha()
                 
                 # do a random rotate
                 img = pygame.transform.rotate(img, random.randint(0, 360))
@@ -364,7 +368,7 @@ def main():
                     if pygame.time.get_ticks() - last_hit_time > 1000:  # 1000 milliseconds = 1 second
                         # Play the random damage sound effect
                         music = random.choice(['1', '2', '3', '4', '5'])
-                        sound = "assets/sound_effect/damage_sound/" + music + ".mp3"
+                        sound = str(current_path) + "/assets/sound_effect/damage_sound/" + music + ".mp3"
                         pygame.mixer.Sound(sound).play()
                         last_hit_time = pygame.time.get_ticks()
                         player.health -= 20  # Reduce player health on collision
@@ -437,6 +441,7 @@ def main():
                 game_over = False
                 won = False
                 death_sound_played = False
+                dead_zombie_list = []
                 
                 # Play the background music again
                 pygame.mixer.music.play(-1, 0.0)

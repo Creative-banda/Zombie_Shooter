@@ -1,13 +1,12 @@
 import pygame
-import os
+import pathlib
 import math
 
 ZOMBIE_SIZE = 30
 CELL_SIZE = 40
 ANIMATION_COOLDOWN = 100 
 
-
-
+current_path = pathlib.Path().absolute()
 
 
 class Zombie:
@@ -22,7 +21,9 @@ class Zombie:
         
         # Load animation frames
         for i in range(6):  
-            img_path = os.path.join('assets/images/zombie', f'{i+1}.png')    
+            img_path = str(current_path) +'/assets/images/zombie/', f'{i+1}.png' 
+            img_path = ''.join(img_path)
+
             image = pygame.image.load(img_path).convert_alpha()
             # Scale the image
             image = pygame.transform.scale(image, (ZOMBIE_SIZE, ZOMBIE_SIZE))

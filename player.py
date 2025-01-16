@@ -1,6 +1,6 @@
 import pygame
 import random, copy
-import os, math
+import os, math, pathlib
 
 PLAYER_SIZE = 35
 CELL_SIZE = 40
@@ -18,8 +18,9 @@ BULLET_SPREAD = 45  # Degrees of spread
 BULLET_COUNT = 6  # Number of bullets per shotgun shot
 
 # Sound effects
+current_path = pathlib.Path().absolute()
 
-walk_sound = pygame.mixer.Sound('assets/sound_effect/player_walk.mp3')
+walk_sound = pygame.mixer.Sound(str(current_path) +'/assets/sound_effect/player_walk.mp3')
 
 
 
@@ -32,8 +33,8 @@ gun_info = {
         "magazine": 6,
         "cooldown": 0,
         "remaining_ammo": 6,
-        "sound": 'assets/sound_effect/gun_sound/handgun.mp3',
-        "reloading_sound" : 'assets/sound_effect/gun_sound/handgun_reload.mp3'
+        "sound": str(current_path) +'/assets/sound_effect/gun_sound/handgun.mp3',
+        "reloading_sound" : str(current_path) +'/assets/sound_effect/gun_sound/handgun_reload.mp3'
     },
     "rifle": {
         "damage": 50,
@@ -41,8 +42,8 @@ gun_info = {
         "magazine": 20,
         "cooldown": 100,
         "remaining_ammo": 20,
-        "sound": 'assets/sound_effect/gun_sound/rifle.mp3',
-        "reloading_sound" : 'assets/sound_effect/gun_sound/rifle_reload.mp3'
+        "sound": str(current_path) +'/assets/sound_effect/gun_sound/rifle.mp3',
+        "reloading_sound" : str(current_path) +'/assets/sound_effect/gun_sound/rifle_reload.mp3'
 
     },
     "shotgun": {
@@ -51,8 +52,8 @@ gun_info = {
         "magazine": 2,
         "cooldown": 1000,
         "remaining_ammo": 2,
-        "sound": 'assets/sound_effect/gun_sound/shotgun_shot.mp3',
-        "reloading_sound" : 'assets/sound_effect/gun_sound/shotgun_reload.mp3'
+        "sound": str(current_path) +'/assets/sound_effect/gun_sound/shotgun_shot.mp3',
+        "reloading_sound" : str(current_path) +'/assets/sound_effect/gun_sound/shotgun_reload.mp3'
 
     }
 }
@@ -99,9 +100,9 @@ class Player:
             self.animation_dict[gun] = []  # Initialize an empty list for this gun
             for animation in animation_types:
                 temp_list = []
-                num_of_frames = len(os.listdir(f'assets/images/player/{gun}/{animation}'))
+                num_of_frames = len(os.listdir(f'{current_path}/assets/images/player/{gun}/{animation}'))
                 for i in range(num_of_frames):
-                    img = pygame.image.load(f'assets/images/player/{gun}/{animation}/{i}.png').convert_alpha()
+                    img = pygame.image.load(f'{current_path}/assets/images/player/{gun}/{animation}/{i}.png').convert_alpha()
                     img = pygame.transform.scale(img, (PLAYER_SIZE, PLAYER_SIZE))
                     rotated_images = {
                         "up": pygame.transform.rotate(img, 90),
@@ -193,7 +194,7 @@ class Player:
     def shoot(self):
         
         if gun_info[self.current_gun]["remaining_ammo"] <= 0 and pygame.time.get_ticks() - self.animation_cool_down > 500:
-            pygame.mixer.Sound('assets/sound_effect/gun_sound/empty_gun.mp3').play()
+            pygame.mixer.Sound(str(current_path) +'/assets/sound_effect/gun_sound/empty_gun.mp3').play()
             self.animation_cool_down = pygame.time.get_ticks()
             return
         if self.can_shoot and not self.isReloading and gun_info[self.current_gun]["remaining_ammo"] > 0:
@@ -298,7 +299,7 @@ class Player:
                         # Play a random zombie death sound
                         random_sound = ['zombie_die1', 'zombie_die2', 'zombie_die3']
                         sound = random.choice(random_sound)
-                        sound = "assets/sound_effect/zombie_die/" + sound + ".mp3"
+                        sound = str(current_path) +"/assets/sound_effect/zombie_die/" + sound + ".mp3"
                         pygame.mixer.Sound(sound).play()
                         zombies.remove(zombie)  # Remove the zombie
                     bullets_to_remove.append(bullet)  # Remove the bullet
