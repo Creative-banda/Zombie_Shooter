@@ -1,9 +1,9 @@
 import pygame
 import pathlib
 import math
+from settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, ZOMBIE_SPEED
 
-ZOMBIE_SIZE = 30
-CELL_SIZE = 40
+
 ANIMATION_COOLDOWN = 100 
 
 current_path = pathlib.Path().absolute()
@@ -13,7 +13,6 @@ class Zombie:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.speed = 1
         self.health = 100
         self.frame_index = 0 
         self.update_time = pygame.time.get_ticks()
@@ -42,8 +41,8 @@ class Zombie:
         distance = math.sqrt(dx**2 + dy**2)
         
         if distance > 0:
-            dx = dx / distance * self.speed
-            dy = dy / distance * self.speed
+            dx = dx / distance * ZOMBIE_SPEED
+            dy = dy / distance * ZOMBIE_SPEED
             
             # Try direct movement first
             new_x = self.x + dx
@@ -53,9 +52,9 @@ class Zombie:
             direct_path_blocked = False
             for wall, wall_type in walls:  # Unpack the tuple into wall and wall_type
                 if (new_x + ZOMBIE_SIZE > wall.x and 
-                    new_x < wall.x + CELL_SIZE and
+                    new_x < wall.x + CELL_SIZE_SCALED and
                     new_y + ZOMBIE_SIZE > wall.y and 
-                    new_y < wall.y + CELL_SIZE):
+                    new_y < wall.y + CELL_SIZE_SCALED):
                     direct_path_blocked = True
                     break
             
@@ -71,9 +70,9 @@ class Zombie:
                 
                 for wall,_ in walls:
                     if (new_x + ZOMBIE_SIZE > wall.x and 
-                        new_x < wall.x + CELL_SIZE and
+                        new_x < wall.x + CELL_SIZE_SCALED and
                         new_y + ZOMBIE_SIZE > wall.y and 
-                        new_y < wall.y + CELL_SIZE):
+                        new_y < wall.y + CELL_SIZE_SCALED):
                         can_move_horizontal = False
                         break
                 
@@ -85,9 +84,9 @@ class Zombie:
                     
                     for wall,_ in walls:
                         if (new_x + ZOMBIE_SIZE > wall.x and 
-                            new_x < wall.x + CELL_SIZE and
+                            new_x < wall.x + CELL_SIZE_SCALED and
                             new_y + ZOMBIE_SIZE > wall.y and 
-                            new_y < wall.y + CELL_SIZE):
+                            new_y < wall.y + CELL_SIZE_SCALED):
                             can_move_vertical = False
                             break
                     

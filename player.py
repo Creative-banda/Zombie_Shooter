@@ -1,19 +1,15 @@
 import pygame
 import random, copy
 import os, math, pathlib
+from settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, PLAYER_SIZE, BULLET_SPEED, PLAYER_SPEED
 
-PLAYER_SIZE = 35
-CELL_SIZE = 40
 
 pygame.mixer.init()
 
 
-BULLET_SIZE = 2  # Bullet size
-ZOMBIE_SIZE = 30
 ANIMATION_COOLDOWN = 100
 
 # Shotgun settings
-BULLET_SPEED = 5  # Speed of bullets
 BULLET_SPREAD = 45  # Degrees of spread
 BULLET_COUNT = 6  # Number of bullets per shotgun shot
 
@@ -81,9 +77,8 @@ class Player:
         self.action = 0  # 0: idle, 1: move, 2: reload, 3: shoot
         self.animation_completed = True
 
-        self.speed = 2
         self.ammo = 100
-        self.health = 100
+        self.health = 10000
         self.bullets = []
         self.current_gun = "handgun"  # Default gun
         self.isShotgun = False
@@ -135,28 +130,28 @@ class Player:
             if new_action != 3:
                 self.can_shoot = True
 
-    def move(self, walls):
-        keys = pygame.key.get_pressed()
+    def move(self, direction, walls):
+        
         new_x, new_y = self.x, self.y
         is_moving = False
 
-        if keys[pygame.K_w]:
-            new_y -= self.speed
+        if direction == "up":
+            new_y -= PLAYER_SPEED
             self.direction = "up"
             is_moving = True
-                
-        elif keys[pygame.K_s]:
-            new_y += self.speed
+
+        elif direction == "down":
+            new_y += PLAYER_SPEED
             self.direction = "down"
             is_moving = True
-                
-        elif keys[pygame.K_a]:
-            new_x -= self.speed
+
+        elif direction == "left":
+            new_x -= PLAYER_SPEED
             self.direction = "left"
             is_moving = True
-                
-        elif keys[pygame.K_d]:
-            new_x += self.speed
+
+        elif direction == "right":
+            new_x += PLAYER_SPEED
             self.direction = "right"
             is_moving = True
 
@@ -174,17 +169,17 @@ class Player:
 
         # Wall collision check
         for wall in walls:
-            if (new_x + PLAYER_SIZE > wall[0].x and new_x < wall[0].x + CELL_SIZE and
-                new_y + PLAYER_SIZE > wall[0].y and new_y < wall[0].y + CELL_SIZE):
-                
-                # turn off the walking sound
+            if (new_x + PLAYER_SIZE > wall[0].x and new_x < wall[0].x + CELL_SIZE_SCALED and
+                new_y + PLAYER_SIZE > wall[0].y and new_y < wall[0].y + CELL_SIZE_SCALED):
+
+                # Stop walking sound if colliding with wall
                 if self.is_Walking_Sound:
                     walk_sound.stop()
                     self.is_Walking_Sound = False
 
-                if keys[pygame.K_w] or keys[pygame.K_s]:
+                if direction in ["up", "down"]:
                     new_y = self.y
-                if keys[pygame.K_a] or keys[pygame.K_d]:
+                if direction in ["left", "right"]:
                     new_x = self.x
 
         self.x, self.y = new_x, new_y
@@ -279,8 +274,8 @@ class Player:
 
             # Check for collisions with walls
             for wall, wall_type in walls:
-                if (bullet["x"] > wall.x and bullet["x"] < wall.x + CELL_SIZE and
-                    bullet["y"] > wall.y and bullet["y"] < wall.y + CELL_SIZE):
+                if (bullet["x"] > wall.x and bullet["x"] < wall.x + CELL_SIZE_SCALED and
+                    bullet["y"] > wall.y and bullet["y"] < wall.y + CELL_SIZE_SCALED):
                     bullets_to_remove.append(bullet)
                     if wall_type == "breakable":
                         isbreak = wall.take_damage(gun_info[self.current_gun]['damage'])  # Reduce wall health
