@@ -1,7 +1,7 @@
 import pygame
 from zombie import Zombie, ZOMBIE_SIZE
 import random, json
-from player import Player, PLAYER_SIZE, BULLET_SIZE, CELL_SIZE, PLAYER_SIZE, gun_info
+from player import Player, PLAYER_SIZE, BULLET_SIZE, CELL_SIZE, PLAYER_SIZE, gun_info, unchanged_details
 
 # Initialize Pygame
 pygame.init()
@@ -60,6 +60,8 @@ wall_image = pygame.transform.scale(wall_image, (CELL_SIZE, CELL_SIZE))  # Scale
 breakable_wall_image = pygame.image.load("assets/images/break_wall.png")
 breakable_wall_image = pygame.transform.scale(breakable_wall_image, (CELL_SIZE, CELL_SIZE))  # Scale the image to the cell size
 
+dead_zombie_image = pygame.image.load("assets/images/dead_zombie.png")
+dead_zombie_image = pygame.transform.scale(dead_zombie_image, (ZOMBIE_SIZE, ZOMBIE_SIZE))
 
 
 # load music and sound 
@@ -236,8 +238,12 @@ def create_fading_torch(radius):
     return torch_surface
 
 
+
+
+
 def main():
-    current_level = 2
+    global gun_info
+    current_level = 1
 
     # Setting all the necessary variables to start the game
     clock = pygame.time.Clock()
@@ -263,6 +269,9 @@ def main():
     
     # Generate the flashlight gradient
     torch_surface = create_fading_torch(torch_radius)
+    
+    dead_zombie_list = []
+
 
     while running:
         for event in pygame.event.get():
@@ -301,7 +310,7 @@ def main():
             player.update_animation()
 
             # Update bullets
-            player.update_bullets(walls, zombies)
+            player.update_bullets(walls, zombies, dead_zombie_list)
 
             # Check win/lose conditions
             if player.health <= 0:
@@ -332,7 +341,10 @@ def main():
         # Draw guns
         for gun,_ in guns:
             gun.draw(screen, camera)
-        
+            
+        # Draw dead zombie
+        for dead_zombie in dead_zombie_list:
+            screen.blit(dead_zombie_image, camera.apply(dead_zombie))
             
 
 
@@ -364,7 +376,7 @@ def main():
             else:
                 bullet_pos = (int(bullet["x"]), int(bullet["y"]))
             pygame.draw.circle(screen, RED, bullet_pos, BULLET_SIZE)
-            player.update_bullets(walls, zombies)
+            player.update_bullets(walls, zombies, dead_zombie_list)
 
         # Create the darkness overlay
         darkness = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
@@ -421,9 +433,10 @@ def main():
                 walls, player_start, zombies, pickups, guns, dead_body, blood = create_map()
                 player = Player(WINDOW_WIDTH, WINDOW_HEIGHT)
                 player.x, player.y = player_start  # Set player's starting position again
+                gun_info = unchanged_details # Reset ammo counts
                 game_over = False
                 won = False
-                death_sound_played = False       
+                death_sound_played = False
                 
                 # Play the background music again
                 pygame.mixer.music.play(-1, 0.0)
@@ -441,9 +454,11 @@ def main():
             else:
                 walls, player_start, zombies, pickups, guns, dead_body, blood = create_map(current_level)
                 player.x, player.y = player_start  # Set player's starting position again
+                player.is_Walking_Sound = False
                 game_over = False
                 won = False
                 victory_sound_played = False 
+                dead_zombie_list = []
             
             
         

@@ -1,5 +1,5 @@
 import pygame
-import random
+import random, copy
 import os, math
 
 PLAYER_SIZE = 35
@@ -32,8 +32,8 @@ gun_info = {
         "magazine": 6,
         "cooldown": 0,
         "remaining_ammo": 6,
-        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/handgun.mp3'),
-        "reloading_sound" : pygame.mixer.Sound('assets/sound_effect/gun_sound/handgun_reload.mp3')
+        "sound": 'assets/sound_effect/gun_sound/handgun.mp3',
+        "reloading_sound" : 'assets/sound_effect/gun_sound/handgun_reload.mp3'
     },
     "rifle": {
         "damage": 50,
@@ -41,8 +41,8 @@ gun_info = {
         "magazine": 20,
         "cooldown": 100,
         "remaining_ammo": 20,
-        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/rifle.mp3'),
-        "reloading_sound" : pygame.mixer.Sound('assets/sound_effect/gun_sound/rifle_reload.mp3')
+        "sound": 'assets/sound_effect/gun_sound/rifle.mp3',
+        "reloading_sound" : 'assets/sound_effect/gun_sound/rifle_reload.mp3'
 
     },
     "shotgun": {
@@ -51,11 +51,13 @@ gun_info = {
         "magazine": 2,
         "cooldown": 1000,
         "remaining_ammo": 2,
-        "sound": pygame.mixer.Sound('assets/sound_effect/gun_sound/shotgun_shot.mp3'),
-        "reloading_sound" : pygame.mixer.Sound('assets/sound_effect/gun_sound/shotgun_reload.mp3')
+        "sound": 'assets/sound_effect/gun_sound/shotgun_shot.mp3',
+        "reloading_sound" : 'assets/sound_effect/gun_sound/shotgun_reload.mp3'
 
     }
 }
+
+unchanged_details = copy.deepcopy(gun_info)
 
 
 class Player:
@@ -199,7 +201,7 @@ class Player:
             if pygame.time.get_ticks() - self.animation_cool_down > gun_info[self.current_gun]["cooldown"]:
                 self.update_action(3)  # Shoot animation
                 self.animation_cool_down = pygame.time.get_ticks()
-                gun_info[self.current_gun]['sound'].play()
+                pygame.mixer.Sound(gun_info[self.current_gun]['sound']).play()
 
 
                 # Calculate bullet direction
@@ -245,7 +247,7 @@ class Player:
         if (gun_info[self.current_gun]['remaining_ammo'] == gun_info[self.current_gun]['magazine']  or self.isReloading or gun_info[self.current_gun]['ammo'] <= 0):
             return
         self.update_action(2)  # Reload animation
-        gun_info[self.current_gun]['reloading_sound'].play()
+        pygame.mixer.Sound(gun_info[self.current_gun]['reloading_sound']).play()
         self.isReloading = True  # Prevent actions while reloading
         self.can_shoot = False  # Prevent shooting during reload
         
@@ -268,7 +270,7 @@ class Player:
             
 
 
-    def update_bullets(self, walls, zombies):
+    def update_bullets(self, walls, zombies, dead_zombie_list):
         bullets_to_remove = []
         for bullet in self.bullets:
             bullet["x"] += bullet["dx"]
@@ -291,6 +293,8 @@ class Player:
                     bullet["y"] > zombie.y and bullet["y"] < zombie.y + ZOMBIE_SIZE):
                     zombie.health -= gun_info[self.current_gun]['damage']  # Reduce zombie health
                     if zombie.health <= 0:
+                        
+                        dead_zombie_list.append(zombie)
                         # Play a random zombie death sound
                         random_sound = ['zombie_die1', 'zombie_die2', 'zombie_die3']
                         sound = random.choice(random_sound)
@@ -327,5 +331,6 @@ class Player:
 
 
     def draw(self, screen, camera=None):
-        
+        if not self.alive:
+            walk_sound.stop()
         screen.blit(self.image, camera.apply(self))  # Apply camera offset and draw
