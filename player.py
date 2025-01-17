@@ -80,8 +80,8 @@ class Player:
         self.health = 100
         self.bullets = []
         self.current_gun = "handgun"  # Default gun
-        self.isShotgun = False
-        self.isRifle = False
+        self.isShotgun = True
+        self.isRifle = True
 
         # Initialize animation dictionary
         self.animation_dict = {}

@@ -21,7 +21,7 @@ CELL_SIZE_SCALED = 40 * scale_x
 COLLECT_ITEM_SIZE_SCALED = 20 * scale_x
 
 # General Settings
-FPS = 60
+FPS = 70
 MAX_LEVEL = 3  # Maximum number of levels in the game
 
 # Colors
@@ -35,8 +35,8 @@ GRAY = (128, 128, 128)
 # Sizes
 collect_item_size = 20
 PLAYER_SIZE = int(35 * scale_x) 
-BULLET_SIZE = int(3 * scale_x)
-BULLET_SPEED = int(5 * scale_x)
+BULLET_SIZE = int(2 * scale_x)
+BULLET_SPEED = int(7 * scale_x)
 ZOMBIE_SIZE = int(35 * scale_x)
 ZOMBIE_SPEED = int(1 * scale_x)
 torch_radius = int(180 * scale_x)
