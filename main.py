@@ -62,54 +62,6 @@ class Wall:
         return False
 
 
-# Button Class
-class Button:
-    def __init__(self, x, y, width, height, color, text):
-        self.rect = pygame.Rect(x, y, width, height)
-        self.color = color
-        self.text = text
-        self.font = pygame.font.Font(None, 20)
-
-    def draw(self, screen):
-        pygame.draw.rect(screen, self.color, self.rect)
-        text_surface = self.font.render(self.text, True, WHITE)
-        screen.blit(text_surface, text_surface.get_rect(center=self.rect.center))
-
-    def is_clicked(self, mouse_pos):
-        return self.rect.collidepoint(mouse_pos)
-
-# Create Buttons
-# Button size and position as percentages of screen dimensions
-BUTTON_WIDTH = actual_screen_width * 0.03  # 10% of the screen width
-BUTTON_HEIGHT = actual_screen_height * 0.05  # 10% of the screen height
-
-# Positions
-BUTTON_SPACING_X = actual_screen_width * 0.2  # 5% of screen width for horizontal spacing
-BUTTON_SPACING_Y = actual_screen_height * 0.15  # 5% of screen height for vertical spacing
-
-# Create Buttons with dynamic positioning and size
-
-buttons = {
-    "up": Button(actual_screen_width * 0.05, actual_screen_height - BUTTON_SPACING_Y * 3, BUTTON_WIDTH, BUTTON_HEIGHT, GREEN, "UP"),
-    "down": Button(actual_screen_width * 0.05, actual_screen_height - BUTTON_SPACING_Y * 2, BUTTON_WIDTH, BUTTON_HEIGHT, GREEN, "DOWN"),
-    "left": Button(actual_screen_width * 0.025, actual_screen_height - BUTTON_SPACING_Y * 2.5, BUTTON_WIDTH, BUTTON_HEIGHT, GREEN, "LEFT"),
-    "right": Button(actual_screen_width * 0.075, actual_screen_height - BUTTON_SPACING_Y * 2.5, BUTTON_WIDTH, BUTTON_HEIGHT, GREEN, "RIGHT"),
-    "shoot": Button(actual_screen_width - BUTTON_SPACING_X - BUTTON_WIDTH, actual_screen_height - BUTTON_SPACING_Y * 2.5, BUTTON_WIDTH * 1.5, BUTTON_HEIGHT, RED, "Shoot"),
-    "rifle": Button(actual_screen_width // 3 - BUTTON_SPACING_X - BUTTON_WIDTH, 100, BUTTON_WIDTH * 1.5, BUTTON_HEIGHT, RED, "Rifle"),
-    "handgun": Button(actual_screen_width // 3 - BUTTON_SPACING_X - BUTTON_WIDTH + 100, 100, BUTTON_WIDTH * 1.5, BUTTON_HEIGHT, RED, "Handgun"),
-    "shotgun": Button(actual_screen_width // 3 - BUTTON_SPACING_X - BUTTON_WIDTH + 200, 100, BUTTON_WIDTH * 1.5, BUTTON_HEIGHT, RED, "Shotgun"),
-    "reload": Button(actual_screen_width // 3 - BUTTON_SPACING_X - BUTTON_WIDTH + 300, 100, BUTTON_WIDTH * 1.5, BUTTON_HEIGHT, RED, "Reload"),
-}
-
-
-# Initialize movement dictionary to track button states
-movement = {
-    "up": False,
-    "down": False,
-    "left": False,
-    "right": False,
-}
-
 
 
 class PickUp:
@@ -276,41 +228,19 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = pygame.mouse.get_pos()
-                for key, button in buttons.items():
-                    if button.is_clicked(mouse_pos):
-                        if key in ["up", "down", "left", "right"]:
-                            movement[key] = True  # Track movement state
-                        elif key == "shoot":
-                            player.shoot()
-                        elif key == "rifle":
-                            player.switch_gun("rifle")
-                        elif key == "handgun":
-                            player.switch_gun("handgun")
-                        elif key == "shotgun":
-                            player.switch_gun("shotgun")
-                        elif key == "reload":
-                            player.reload()
-
-            elif event.type == pygame.MOUSEBUTTONUP:
-                mouse_pos = pygame.mouse.get_pos()
-                for key, button in buttons.items():
-                    if key in ["up", "down", "left", "right"]:
-                        movement[key] = False  # Stop movement
-                            
-
-            # Determine the movement direction
-            direction = "None"
-
-            if movement["up"]:
-                direction = "up"
-            elif movement["down"]:
-                direction = "down"
-            elif movement["left"]:
-                direction = "left"
-            elif movement["right"]:
-                direction = "right"
+                
+            keys = pygame.key.get_pressed()
+            
+            if keys[pygame.K_SPACE]:
+                player.shoot()
+            elif keys[pygame.K_1]:
+                player.current_gun = "handgun"
+            elif keys[pygame.K_2] and player.isRifle:
+                player.current_gun = "rifle"
+            elif keys[pygame.K_3] and player.isShotgun:
+                player.current_gun = "shotgun"
+            elif keys[pygame.K_r]  and not player.isReloading:
+                player.reload()
 
 
 
@@ -327,7 +257,7 @@ def main():
             camera.update(player)
 
             # Move the player
-            player.move(direction, walls)
+            player.move( walls)
             player.update_animation()
 
             # Update bullets
@@ -436,9 +366,7 @@ def main():
         # Display the current level in the bottom right corner
         level_text = font.render(f"Level: {current_level}", True, WHITE)
         screen.blit(level_text, (actual_screen_width - 100, actual_screen_height - 100))
-        # Draw buttons
-        for button in buttons.values():
-            button.draw(screen)
+
 
         # Game over screen
         if not player.alive:

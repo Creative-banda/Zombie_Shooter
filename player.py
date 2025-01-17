@@ -77,8 +77,7 @@ class Player:
         self.action = 0  # 0: idle, 1: move, 2: reload, 3: shoot
         self.animation_completed = True
 
-        self.ammo = 100
-        self.health = 10000
+        self.health = 100
         self.bullets = []
         self.current_gun = "handgun"  # Default gun
         self.isShotgun = False
@@ -130,27 +129,27 @@ class Player:
             if new_action != 3:
                 self.can_shoot = True
 
-    def move(self, direction, walls):
-        
+    def move(self, walls):
+        keys = pygame.key.get_pressed()
         new_x, new_y = self.x, self.y
         is_moving = False
 
-        if direction == "up":
+        if keys[pygame.K_w]:
             new_y -= PLAYER_SPEED
             self.direction = "up"
             is_moving = True
-
-        elif direction == "down":
+                
+        elif keys[pygame.K_s]:
             new_y += PLAYER_SPEED
             self.direction = "down"
             is_moving = True
-
-        elif direction == "left":
+                
+        elif keys[pygame.K_a]:
             new_x -= PLAYER_SPEED
             self.direction = "left"
             is_moving = True
-
-        elif direction == "right":
+                
+        elif keys[pygame.K_d]:
             new_x += PLAYER_SPEED
             self.direction = "right"
             is_moving = True
@@ -171,20 +170,19 @@ class Player:
         for wall in walls:
             if (new_x + PLAYER_SIZE > wall[0].x and new_x < wall[0].x + CELL_SIZE_SCALED and
                 new_y + PLAYER_SIZE > wall[0].y and new_y < wall[0].y + CELL_SIZE_SCALED):
-
-                # Stop walking sound if colliding with wall
+                
+                # turn off the walking sound
                 if self.is_Walking_Sound:
                     walk_sound.stop()
                     self.is_Walking_Sound = False
 
-                if direction in ["up", "down"]:
+                if keys[pygame.K_w] or keys[pygame.K_s]:
                     new_y = self.y
-                if direction in ["left", "right"]:
+                if keys[pygame.K_a] or keys[pygame.K_d]:
                     new_x = self.x
 
         self.x, self.y = new_x, new_y
         self.rect.topleft = (self.x, self.y)
-
 
     def shoot(self):
         
