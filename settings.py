@@ -17,7 +17,7 @@ actual_screen_width, actual_screen_height = pygame.display.get_desktop_sizes()[0
 scale_x = actual_screen_width / VIRTUAL_WIDTH
 scale_y = actual_screen_height / VIRTUAL_HEIGHT
 
-CELL_SIZE_SCALED = 40 * scale_x
+CELL_SIZE_SCALED = 45 * scale_x
 COLLECT_ITEM_SIZE_SCALED = 20 * scale_x
 
 # General Settings
@@ -34,7 +34,7 @@ GRAY = (128, 128, 128)
 
 # Sizes
 collect_item_size = 20
-PLAYER_SIZE = int(35 * scale_x) 
+PLAYER_SIZE = int(30 * scale_x) 
 BULLET_SIZE = int(2 * scale_x)
 BULLET_SPEED = int(7 * scale_x)
 ZOMBIE_SIZE = int(35 * scale_x)
@@ -52,6 +52,7 @@ sounds_dir = assets_dir + "/sound_effect"
 levels_dir = assets_dir + "/levels"
 
 
+
 # Asset Files
 bullet_image = pygame.image.load(images_dir + "/bullet.png")
 health_image = pygame.image.load(images_dir + "/health.png")
@@ -60,9 +61,8 @@ rifle_ammo_image = pygame.image.load(images_dir + "/rifle_ammo.png")
 shotgun_image = pygame.image.load(images_dir + "/shotgun.png")
 shotgun_ammo_image = pygame.image.load(images_dir + "/shotgun_bullet.png")
 piston_ammo_image = pygame.image.load(images_dir + "/piston_bullet.png")
-bg_image = pygame.image.load(images_dir + "/bg_image.jpg")
-bg_image = pygame.transform.scale(bg_image, (actual_screen_width, actual_screen_height))
-wall_image = pygame.image.load(images_dir + "/wall3.PNG")
+bg_image = pygame.image.load(images_dir + "/background.jpg")
+wall_image = pygame.image.load(images_dir + "/wall.png")
 breakable_wall_image = pygame.image.load(images_dir + "/break_wall.png")
 dead_zombie_image = pygame.image.load(images_dir + "/dead_zombie.png")
 

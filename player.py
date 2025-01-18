@@ -80,8 +80,8 @@ class Player:
         self.health = 100
         self.bullets = []
         self.current_gun = "handgun"  # Default gun
-        self.isShotgun = True
-        self.isRifle = True
+        self.isShotgun = False
+        self.isRifle = False
 
         # Initialize animation dictionary
         self.animation_dict = {}
@@ -306,7 +306,10 @@ class Player:
     def update_animation(self):
 
         # Update image depending on current gun, action, and frame
-        self.image = self.animation_dict[self.current_gun][self.action][self.frame_index][self.direction]
+        try:
+            self.image = self.animation_dict[self.current_gun][self.action][self.frame_index][self.direction]
+        except:
+            pass
 
         # Check if enough time has passed since the last update
         if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
