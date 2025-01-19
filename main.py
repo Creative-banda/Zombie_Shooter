@@ -1,5 +1,5 @@
 import pygame
-from zombie import Zombie, ZOMBIE_SIZE
+from zombie import Zombie
 import random, json
 from player import Player, gun_info, unchanged_details
 from settings import *
@@ -146,9 +146,9 @@ def check_pickups(player, pickups, guns):
         if (player.x < ammo.x + 10 and player.x + PLAYER_SIZE > ammo.x and
             player.y < ammo.y + 10 and player.y + PLAYER_SIZE > ammo.y):
             if ammotype == "handgun":
-                gun_info['handgun']['ammo'] += 10
+                gun_info['handgun']['ammo'] += 15
             elif ammotype == "rifle":
-                gun_info['rifle']['ammo'] += 10
+                gun_info['rifle']['ammo'] += 20
             elif ammotype == "shotgun":
                 gun_info['shotgun']['ammo'] += 10
             pickups["ammo"].remove((ammo, ammotype))  # Remove the pickup
@@ -157,7 +157,7 @@ def check_pickups(player, pickups, guns):
     # Check for health pickups
     for health in pickups["health"][:]:
         if (player.x < health.x + 10 and player.x + PLAYER_SIZE > health.x and
-            player.y < health.y + 10 and player.y + PLAYER_SIZE > health.y):
+            player.y < health.y + 10 and player.y + PLAYER_SIZE > health.y and player.health < 100):
             player.health = min(player.health + 20, 100)  # Add health, max 100
             pickups["health"].remove(health)  # Remove the pickup
             item_pickup_sound.play()
@@ -182,7 +182,7 @@ def create_fading_torch(radius):
 
 def main():
     global gun_info, bg_image
-    current_level = 3
+    current_level = 1
 
     # Setting all the necessary variables to start the game
     clock = pygame.time.Clock()
