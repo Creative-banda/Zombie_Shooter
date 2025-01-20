@@ -393,7 +393,7 @@ def main():
                 dead_zombie_list = []
                 
                 # Play the background music again
-                pygame.mixer.music.play(-1)
+                background_music.play(-1)
                         
         elif won and player.alive:
             text = "You Win!"
