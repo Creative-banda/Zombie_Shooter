@@ -1,5 +1,5 @@
 import pygame
-from zombie import Zombie, ZOMBIE_SIZE
+from zombie import Zombie
 import random, json
 from player import Player, gun_info, unchanged_details
 from settings import *
@@ -17,8 +17,6 @@ pygame.display.set_caption("Zombie Shooter")
 background_music = pygame.mixer.Sound(f"{current_path}/assets/sound_effect/background_music.mp3")
 background_music.play(-1)  # Play the background music on loop
 
-
-
 class Camera:
     def __init__(self, width, height, player):
         self.camera = pygame.Rect(player.x, player.y, width, height)
@@ -34,8 +32,6 @@ class Camera:
         x = -target.rect.centerx + int(self.width / 2)
         y = -target.rect.centery + int(self.height / 2)
         self.camera = pygame.Rect(x, y, self.width, self.height)
-
-
 
 class Wall:
     def __init__(self, x, y, image, health=100):
@@ -61,9 +57,6 @@ class Wall:
             return True
         return False
 
-
-
-
 class PickUp:
     
     def __init__(self, x, y, image, height, width, amount=5):
@@ -82,8 +75,8 @@ class PickUp:
         else:
             screen.blit(self.image, (self.x, self.y))  # Default rendering without camera
 
-
 def create_map(level=1):
+    global ROW, COL
     walls = []
     zombies = []
     guns = []
@@ -95,6 +88,9 @@ def create_map(level=1):
     # Load the level 1 as json file 
     with open(f"{current_path}/assets/levels/level{level}.json") as file:
         maze_layout = json.load(file)
+    
+    ROW = len(maze_layout)
+    COL = len(maze_layout[0])
 
     
     for y, row in enumerate(maze_layout):
@@ -144,16 +140,15 @@ def create_map(level=1):
     
     return walls, player_start, zombies, pickups, guns, dead_body, blood
 
-
 def check_pickups(player, pickups, guns):
     # Check for ammo pickups
     for ammo,ammotype in pickups["ammo"]:
         if (player.x < ammo.x + 10 and player.x + PLAYER_SIZE > ammo.x and
             player.y < ammo.y + 10 and player.y + PLAYER_SIZE > ammo.y):
             if ammotype == "handgun":
-                gun_info['handgun']['ammo'] += 10
+                gun_info['handgun']['ammo'] += 15
             elif ammotype == "rifle":
-                gun_info['rifle']['ammo'] += 10
+                gun_info['rifle']['ammo'] += 20
             elif ammotype == "shotgun":
                 gun_info['shotgun']['ammo'] += 10
             pickups["ammo"].remove((ammo, ammotype))  # Remove the pickup
@@ -162,7 +157,7 @@ def check_pickups(player, pickups, guns):
     # Check for health pickups
     for health in pickups["health"][:]:
         if (player.x < health.x + 10 and player.x + PLAYER_SIZE > health.x and
-            player.y < health.y + 10 and player.y + PLAYER_SIZE > health.y):
+            player.y < health.y + 10 and player.y + PLAYER_SIZE > health.y and player.health < 100):
             player.health = min(player.health + 20, 100)  # Add health, max 100
             pickups["health"].remove(health)  # Remove the pickup
             item_pickup_sound.play()
@@ -177,7 +172,6 @@ def check_pickups(player, pickups, guns):
             guns.remove((gun, gun_type))  # Remove the pickup
             gun_pickup_sound.play()
 
-
 def create_fading_torch(radius):
     torch_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
     for i in range(radius, 0, -1):
@@ -186,12 +180,8 @@ def create_fading_torch(radius):
         pygame.draw.circle(torch_surface, color, (radius, radius), i)
     return torch_surface
 
-
-
-
-
 def main():
-    global gun_info
+    global gun_info, bg_image
     current_level = 1
 
     # Setting all the necessary variables to start the game
@@ -199,6 +189,8 @@ def main():
     walls, player_start, zombies, pickups, guns, dead_body, blood = create_map(current_level)
     
     player = Player(actual_screen_width , actual_screen_height)
+    bg_image = pygame.transform.scale(bg_image, (COL * CELL_SIZE_SCALED, ROW * CELL_SIZE_SCALED))
+
     player.x, player.y = player_start  # Set player's starting position
     running = True
     game_over = False
@@ -220,11 +212,8 @@ def main():
     torch_surface = create_fading_torch(torch_radius)
     
     dead_zombie_list = []
-    direction = None
 
-
-    while running:
-        
+    while running:    
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -242,13 +231,9 @@ def main():
             elif keys[pygame.K_r]  and not player.isReloading:
                 player.reload()
 
-
-
         # Clear the screen
-        screen.blit(bg_image, (0, 0))
+        screen.blit(bg_image, camera.apply(walls[0][0]))  # Apply camera offset to the background image
         
-        
-
         if not game_over:
             # Check for pickups
             check_pickups(player, pickups, guns)
@@ -263,7 +248,6 @@ def main():
             # Update bullets
             player.update_bullets(walls, zombies, dead_zombie_list)
             
-
             # Check win/lose conditions
             if player.health <= 0:
                 game_over = True
@@ -297,8 +281,6 @@ def main():
         # Draw dead zombie
         for dead_zombie in dead_zombie_list:
             screen.blit(dead_zombie_image, camera.apply(dead_zombie))
-            
-
 
         # Draw player
         player.draw(screen, camera)
@@ -353,13 +335,10 @@ def main():
         screen.blit(font.render(ammo_text, True, WHITE), (actual_screen_width // 2, 10))
 
         # display the zombie in area
-
         zombie_text = font.render(f"Zombies: {len(zombies)}", True, WHITE)
         screen.blit(zombie_text, (actual_screen_width - text_width, 10))
         
-        
         # Display game FPS in the bottom left corner
-        
         fps_text = font.render(f"FPS: {int(clock.get_fps())}", True, WHITE)
         screen.blit(fps_text, (10, actual_screen_height - 100))
         
@@ -393,6 +372,7 @@ def main():
                 dead_zombie_list = []
                 
                 # Play the background music again
+                loose_sound.stop()
                 background_music.play(-1)
                         
         elif won and player.alive:
@@ -413,9 +393,6 @@ def main():
                 won = False
                 victory_sound_played = False 
                 dead_zombie_list = []
-            
-            
-        
         
         # Update the display
         pygame.display.flip()

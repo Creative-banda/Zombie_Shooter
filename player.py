@@ -1,7 +1,7 @@
 import pygame
 import random, copy
 import os, math, pathlib
-from settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, PLAYER_SIZE, BULLET_SPEED, PLAYER_SPEED
+from settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, PLAYER_SIZE, BULLET_SPEED, PLAYER_SPEED, gun_info
 
 
 pygame.mixer.init()
@@ -22,37 +22,6 @@ walk_sound = pygame.mixer.Sound(str(current_path) +'/assets/sound_effect/player_
 
 # Gun information
 
-gun_info = {
-    "handgun": {
-        "damage": 20,
-        "ammo": 15,
-        "magazine": 6,
-        "cooldown": 0,
-        "remaining_ammo": 6,
-        "sound": str(current_path) +'/assets/sound_effect/gun_sound/handgun.mp3',
-        "reloading_sound" : str(current_path) +'/assets/sound_effect/gun_sound/handgun_reload.mp3'
-    },
-    "rifle": {
-        "damage": 50,
-        "ammo": 40,
-        "magazine": 20,
-        "cooldown": 100,
-        "remaining_ammo": 20,
-        "sound": str(current_path) +'/assets/sound_effect/gun_sound/rifle.mp3',
-        "reloading_sound" : str(current_path) +'/assets/sound_effect/gun_sound/rifle_reload.mp3'
-
-    },
-    "shotgun": {
-        "damage": 100,
-        "ammo": 10,
-        "magazine": 2,
-        "cooldown": 1000,
-        "remaining_ammo": 2,
-        "sound": str(current_path) +'/assets/sound_effect/gun_sound/shotgun_shot.mp3',
-        "reloading_sound" : str(current_path) +'/assets/sound_effect/gun_sound/shotgun_reload.mp3'
-
-    }
-}
 
 unchanged_details = copy.deepcopy(gun_info)
 
@@ -80,8 +49,8 @@ class Player:
         self.health = 100
         self.bullets = []
         self.current_gun = "handgun"  # Default gun
-        self.isShotgun = True
-        self.isRifle = True
+        self.isShotgun = False
+        self.isRifle = False
 
         # Initialize animation dictionary
         self.animation_dict = {}
@@ -306,7 +275,10 @@ class Player:
     def update_animation(self):
 
         # Update image depending on current gun, action, and frame
-        self.image = self.animation_dict[self.current_gun][self.action][self.frame_index][self.direction]
+        try:
+            self.image = self.animation_dict[self.current_gun][self.action][self.frame_index][self.direction]
+        except:
+            pass
 
         # Check if enough time has passed since the last update
         if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
