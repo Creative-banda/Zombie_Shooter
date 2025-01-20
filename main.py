@@ -1,7 +1,7 @@
 import pygame
 from zombie import Zombie
 import random, json
-from player import Player, gun_info, unchanged_details
+from player import Player, unchanged_details
 from settings import *
 
 # Initialize Pygame
@@ -18,6 +18,7 @@ background_music = pygame.mixer.Sound(f"{current_path}/assets/sound_effect/backg
 background_music.play(-1)  # Play the background music on loop
 
 class Camera:
+    
     def __init__(self, width, height, player):
         self.camera = pygame.Rect(player.x, player.y, width, height)
         self.width = width
@@ -31,7 +32,8 @@ class Camera:
         # Center the camera on the target (usually the player)
         x = -target.rect.centerx + int(self.width / 2)
         y = -target.rect.centery + int(self.height / 2)
-        self.camera = pygame.Rect(x, y, self.width, self.height)
+        self.camera.x += (x - self.camera.x) * 0.02  # Smoothly move the camera to the target
+        self.camera.y += (y - self.camera.y) * 0.02
 
 class Wall:
     def __init__(self, x, y, image, health=100):
@@ -174,6 +176,7 @@ def check_pickups(player, pickups, guns):
 
 def create_fading_torch(radius):
     torch_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+    # Here Alpha 0 mean fully transparent and 255 mean fully opaque
     for i in range(radius, 0, -1):
         alpha = int(255 * (i / radius))  # Gradually reduce alpha
         color = (0, 0, 0, 255 - alpha)  # Darken towards the edge
@@ -302,6 +305,7 @@ def main():
                         pygame.mixer.Sound(sound).play()
                         last_hit_time = pygame.time.get_ticks()
                         player.health -= 20  # Reduce player health on collision
+                
 
         # Draw bullets
         for bullet in player.bullets:
@@ -362,7 +366,7 @@ def main():
             keys = pygame.key.get_pressed()
             if keys[pygame.K_r]:
                 # Reset game state
-                walls, player_start, zombies, pickups, guns, dead_body, blood = create_map()
+                walls, player_start, zombies, pickups, guns, dead_body, blood = create_map(current_level)
                 player = Player(actual_screen_width , actual_screen_height)
                 player.x, player.y = player_start  # Set player's starting position again
                 gun_info = unchanged_details # Reset ammo counts
