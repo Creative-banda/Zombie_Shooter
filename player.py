@@ -23,12 +23,9 @@ walk_sound = pygame.mixer.Sound(str(current_path) +'/assets/sound_effect/player_
 # Gun information
 
 
-unchanged_details = copy.deepcopy(gun_info)
-
-
-class Player:
+class Player():
     
-    def __init__(self, WINDOW_WIDTH, WINDOW_HEIGHT):
+    def __init__(self, WINDOW_WIDTH, WINDOW_HEIGHT, gun_info):
         self.alive = True
         self.direction = "right"
         self.animation_cool_down = pygame.time.get_ticks()
@@ -40,6 +37,7 @@ class Player:
         self.x = WINDOW_WIDTH // 2
         self.y = WINDOW_HEIGHT // 2
         self.rect = pygame.Rect(self.x, self.y, PLAYER_SIZE, PLAYER_SIZE)
+        self.gun_info = copy.deepcopy(gun_info)  # Create an independent copy
 
         # Animation properties
         self.frame_index = 0
@@ -154,17 +152,16 @@ class Player:
         self.rect.topleft = (self.x, self.y)
 
     def shoot(self):
-        
-        if gun_info[self.current_gun]["remaining_ammo"] <= 0 and pygame.time.get_ticks() - self.animation_cool_down > 500:
+        if self.gun_info[self.current_gun]["remaining_ammo"] <= 0 and pygame.time.get_ticks() - self.animation_cool_down > 500:
             pygame.mixer.Sound(str(current_path) +'/assets/sound_effect/gun_sound/empty_gun.mp3').play()
             self.animation_cool_down = pygame.time.get_ticks()
             return
-        if self.can_shoot and not self.isReloading and gun_info[self.current_gun]["remaining_ammo"] > 0:
+        if self.can_shoot and not self.isReloading and self.gun_info[self.current_gun]["remaining_ammo"] > 0:
             self.can_shoot = False  # Prevent shooting until animation completes
-            if pygame.time.get_ticks() - self.animation_cool_down > gun_info[self.current_gun]["cooldown"]:
+            if pygame.time.get_ticks() - self.animation_cool_down > self.gun_info[self.current_gun]["cooldown"]:
                 self.update_action(3)  # Shoot animation
                 self.animation_cool_down = pygame.time.get_ticks()
-                pygame.mixer.Sound(gun_info[self.current_gun]['sound']).play()
+                pygame.mixer.Sound(self.gun_info[self.current_gun]['sound']).play()
 
 
                 # Calculate bullet direction
@@ -202,15 +199,15 @@ class Player:
                     }
                     self.bullets.append(bullet)
 
-                gun_info[self.current_gun]['remaining_ammo'] -= 1
+                self.gun_info[self.current_gun]['remaining_ammo'] -= 1
 
 
 
     def reload(self):
-        if (gun_info[self.current_gun]['remaining_ammo'] == gun_info[self.current_gun]['magazine']  or self.isReloading or gun_info[self.current_gun]['ammo'] <= 0):
+        if (self.gun_info[self.current_gun]['remaining_ammo'] == self.gun_info[self.current_gun]['magazine']  or self.isReloading or self.gun_info[self.current_gun]['ammo'] <= 0):
             return
         self.update_action(2)  # Reload animation
-        pygame.mixer.Sound(gun_info[self.current_gun]['reloading_sound']).play()
+        pygame.mixer.Sound(self.gun_info[self.current_gun]['reloading_sound']).play()
         self.isReloading = True  # Prevent actions while reloading
         self.can_shoot = False  # Prevent shooting during reload
         
@@ -218,15 +215,15 @@ class Player:
         if pygame.time.get_ticks() - self.animation_cool_down > 200:
             self.animation_cool_down = pygame.time.get_ticks()
             
-            bullets_to_reload = gun_info[self.current_gun]['magazine'] - gun_info[self.current_gun]["remaining_ammo"]
+            bullets_to_reload = self.gun_info[self.current_gun]['magazine'] - self.gun_info[self.current_gun]["remaining_ammo"]
             
-            if gun_info[self.current_gun]['ammo'] < bullets_to_reload:
-                gun_info[self.current_gun]["remaining_ammo"] = gun_info[self.current_gun]['ammo']
-                bullets_to_reload = gun_info[self.current_gun]['ammo']
+            if self.gun_info[self.current_gun]['ammo'] < bullets_to_reload:
+                self.gun_info[self.current_gun]["remaining_ammo"] = self.gun_info[self.current_gun]['ammo']
+                bullets_to_reload = self.gun_info[self.current_gun]['ammo']
             else:      
-                gun_info[self.current_gun]["remaining_ammo"] = gun_info[self.current_gun]["magazine"]
+                self.gun_info[self.current_gun]["remaining_ammo"] = self.gun_info[self.current_gun]["magazine"]
 
-            gun_info[self.current_gun]['ammo'] -= bullets_to_reload
+            self.gun_info[self.current_gun]['ammo'] -= bullets_to_reload
             
 
             self.can_shoot = True
@@ -245,7 +242,7 @@ class Player:
                     bullet["y"] > wall.y and bullet["y"] < wall.y + CELL_SIZE_SCALED):
                     bullets_to_remove.append(bullet)
                     if wall_type == "breakable":
-                        isbreak = wall.take_damage(gun_info[self.current_gun]['damage'])  # Reduce wall health
+                        isbreak = wall.take_damage(self.gun_info[self.current_gun]['damage'])  # Reduce wall health
                         if isbreak:
                             walls.remove((wall, wall_type))
                     break
@@ -254,7 +251,12 @@ class Player:
             for zombie in zombies[:]:
                 if (bullet["x"] > zombie.x and bullet["x"] < zombie.x + ZOMBIE_SIZE and
                     bullet["y"] > zombie.y and bullet["y"] < zombie.y + ZOMBIE_SIZE):
-                    zombie.health -= gun_info[self.current_gun]['damage']  # Reduce zombie health
+                    zombie.health -= self.gun_info[self.current_gun]['damage']  # Reduce zombie health
+
+                    # Active the zombie if it's not already
+                    if not zombie.isPlayerSeen:
+                        zombie.isPlayerSeen = True
+
                     if zombie.health <= 0:
                         
                         dead_zombie_list.append(zombie)

@@ -7,16 +7,18 @@ pygame.mixer.init()
 
 
 
-
-
-
-
 # Virtual Resolution (Logical Resolution for Game Logic)
 VIRTUAL_WIDTH = 800
 VIRTUAL_HEIGHT = 600
 
 # Get Actual Screen Resolution
 actual_screen_width, actual_screen_height = pygame.display.get_desktop_sizes()[0]
+
+
+# Testing Resolution
+# actual_screen_width = 800
+# actual_screen_height = 600
+
 
 # Scaling Factors
 scale_x = actual_screen_width / VIRTUAL_WIDTH
@@ -38,45 +40,47 @@ GREEN = (0, 255, 0)
 GRAY = (128, 128, 128)
 
 # Sizes
-collect_item_size = 20
 PLAYER_SIZE = int(30 * scale_x) 
 BULLET_SIZE = int(2 * scale_x)
 BULLET_SPEED = int(7 * scale_x)
 ZOMBIE_SIZE = int(35 * scale_x)
 ZOMBIE_SPEED = int(1 * scale_x)
-torch_radius = int(180 * scale_x)
+
+TORCH_RADIUS = int(180 * scale_x)
 
 PLAYER_SPEED = int(2*scale_x)
 
 # Paths
 current_path = pathlib.Path().absolute()
 
-assets_dir = str(current_path) + "/assets"
-images_dir = assets_dir + "/images"
-sounds_dir = assets_dir + "/sound_effect"
-levels_dir = assets_dir + "/levels"
+ASSETS_DIR = str(current_path) + "/assets"
+
+IMAGES_DIR = ASSETS_DIR + "/images"
+SOUNDS_DIR = ASSETS_DIR + "/sound_effect"
+LEVELS_DIR = ASSETS_DIR + "/levels"
 
 
 
 # Asset Files
-bullet_image = pygame.image.load(images_dir + "/bullet.png")
-health_image = pygame.image.load(images_dir + "/health.png")
-akm_image = pygame.image.load(images_dir + "/AKM.png")
-rifle_ammo_image = pygame.image.load(images_dir + "/rifle_ammo.png")
-shotgun_image = pygame.image.load(images_dir + "/shotgun.png")
-shotgun_ammo_image = pygame.image.load(images_dir + "/shotgun_bullet.png")
-piston_ammo_image = pygame.image.load(images_dir + "/piston_bullet.png")
-bg_image = pygame.image.load(images_dir + "/background.jpg")
-wall_image = pygame.image.load(images_dir + "/wall.png")
-breakable_wall_image = pygame.image.load(images_dir + "/break_wall.png")
-dead_zombie_image = pygame.image.load(images_dir + "/dead_zombie.png")
+bullet_image = pygame.image.load(IMAGES_DIR + "/bullet.png")
+health_image = pygame.image.load(IMAGES_DIR + "/health.png")
+akm_image = pygame.image.load(IMAGES_DIR + "/AKM.png")
+rifle_ammo_image = pygame.image.load(IMAGES_DIR + "/rifle_ammo.png")
+shotgun_image = pygame.image.load(IMAGES_DIR + "/shotgun.png")
+shotgun_ammo_image = pygame.image.load(IMAGES_DIR + "/shotgun_bullet.png")
+piston_ammo_image = pygame.image.load(IMAGES_DIR + "/piston_bullet.png")
+bg_image = pygame.image.load(IMAGES_DIR + "/background.jpg")
+wall_image = pygame.image.load(IMAGES_DIR + "/wall.png")
+breakable_wall_image = pygame.image.load(IMAGES_DIR + "/break_wall.png")
+dead_zombie_image = pygame.image.load(IMAGES_DIR + "/dead_zombie.png")
+dead_zombie_image = pygame.transform.scale(dead_zombie_image, (ZOMBIE_SIZE, ZOMBIE_SIZE))
 
 # Sound Files
-gun_pickup_sound = pygame.mixer.Sound(sounds_dir + "/gun_pickup.mp3")
-item_pickup_sound = pygame.mixer.Sound(sounds_dir + "/collect_item.mp3")
-death_sound = pygame.mixer.Sound(sounds_dir + "/death.mp3")
-victory_sound = pygame.mixer.Sound(sounds_dir + "/victory_sound.mp3")
-loose_sound = pygame.mixer.Sound(sounds_dir + "/loose.mp3")
+gun_pickup_sound = pygame.mixer.Sound(SOUNDS_DIR + "/gun_pickup.mp3")
+item_pickup_sound = pygame.mixer.Sound(SOUNDS_DIR + "/collect_item.mp3")
+death_sound = pygame.mixer.Sound(SOUNDS_DIR + "/death.mp3")
+victory_sound = pygame.mixer.Sound(SOUNDS_DIR + "/victory_sound.mp3")
+loose_sound = pygame.mixer.Sound(SOUNDS_DIR + "/loose.mp3")
 
 
 # Player Gun Info

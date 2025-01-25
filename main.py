@@ -1,7 +1,7 @@
-import pygame
+import pygame, copy
 from zombie import Zombie
 import random, json
-from player import Player, unchanged_details
+from player import Player
 from settings import *
 
 # Initialize Pygame
@@ -16,6 +16,8 @@ pygame.display.set_caption("Zombie Shooter")
 
 background_music = pygame.mixer.Sound(f"{current_path}/assets/sound_effect/background_music.mp3")
 background_music.play(-1)  # Play the background music on loop
+
+
 
 class Camera:
     
@@ -68,7 +70,6 @@ class PickUp:
         self.width = width
         self.image = image.convert_alpha()
         self.image = pygame.transform.scale(self.image, (self.width, self.height))  # Scale the image to the cell size
-        self.amount = amount
         self.rect = self.image.get_rect(topleft=(x, y))  # Add rect for camera compatibility
 
     def draw(self, screen, camera=None):
@@ -78,7 +79,8 @@ class PickUp:
             screen.blit(self.image, (self.x, self.y))  # Default rendering without camera
 
 def create_map(level=1):
-    global ROW, COL
+    global  bg_image
+
     walls = []
     zombies = []
     guns = []
@@ -88,11 +90,13 @@ def create_map(level=1):
     player_start = None
     
     # Load the level 1 as json file 
-    with open(f"{current_path}/assets/levels/level{level}.json") as file:
+    with open(f"{LEVELS_DIR}/level{level}.json") as file:
         maze_layout = json.load(file)
     
-    ROW = len(maze_layout)
-    COL = len(maze_layout[0])
+    height = len(maze_layout)
+    width = len(maze_layout[0])
+
+    bg_image = pygame.transform.scale(bg_image, (width * CELL_SIZE_SCALED, height * CELL_SIZE_SCALED))
 
     
     for y, row in enumerate(maze_layout):
@@ -148,11 +152,11 @@ def check_pickups(player, pickups, guns):
         if (player.x < ammo.x + 10 and player.x + PLAYER_SIZE > ammo.x and
             player.y < ammo.y + 10 and player.y + PLAYER_SIZE > ammo.y):
             if ammotype == "handgun":
-                gun_info['handgun']['ammo'] += 15
+                player.gun_info['handgun']['ammo'] += 15
             elif ammotype == "rifle":
-                gun_info['rifle']['ammo'] += 20
+                player.gun_info['rifle']['ammo'] += 20
             elif ammotype == "shotgun":
-                gun_info['shotgun']['ammo'] += 10
+                player.gun_info['shotgun']['ammo'] += 10
             pickups["ammo"].remove((ammo, ammotype))  # Remove the pickup
             item_pickup_sound.play()
 
@@ -160,7 +164,7 @@ def check_pickups(player, pickups, guns):
     for health in pickups["health"][:]:
         if (player.x < health.x + 10 and player.x + PLAYER_SIZE > health.x and
             player.y < health.y + 10 and player.y + PLAYER_SIZE > health.y and player.health < 100):
-            player.health = min(player.health + 20, 100)  # Add health, max 100
+            player.health = min(player.health + 40, 100)  # Add health, max 100
             pickups["health"].remove(health)  # Remove the pickup
             item_pickup_sound.play()
     
@@ -184,22 +188,19 @@ def create_fading_torch(radius):
     return torch_surface
 
 def main():
-    global gun_info, bg_image
     current_level = 1
 
     # Setting all the necessary variables to start the game
     clock = pygame.time.Clock()
     walls, player_start, zombies, pickups, guns, dead_body, blood = create_map(current_level)
     
-    player = Player(actual_screen_width , actual_screen_height)
-    bg_image = pygame.transform.scale(bg_image, (COL * CELL_SIZE_SCALED, ROW * CELL_SIZE_SCALED))
+    player = Player(actual_screen_width , actual_screen_height, gun_info)
 
     player.x, player.y = player_start  # Set player's starting position
     running = True
     game_over = False
     won = False
     death_sound_played = False
-    last_hit_time = pygame.time.get_ticks()
     font = pygame.font.Font(None, 36)
     victory_sound_played = False
 
@@ -212,7 +213,7 @@ def main():
     bullet_pos = (0, 0)
     
     # Generate the flashlight gradient
-    torch_surface = create_fading_torch(torch_radius)
+    torch_surface = create_fading_torch(TORCH_RADIUS)
     
     dead_zombie_list = []
 
@@ -290,21 +291,12 @@ def main():
 
         # Draw zombies
         for zombie in zombies:
-            zombie.move_towards_player(player, walls)
+            # zombie.move_towards_player(player, walls)
             zombie.draw(screen, camera)
-            
-            # Check for zombie collision with player
-            if (zombie.x < player.x + PLAYER_SIZE and zombie.x + ZOMBIE_SIZE > player.x and
-                zombie.y < player.y + PLAYER_SIZE and zombie.y + ZOMBIE_SIZE > player.y):
-                if player.health > 0:
-                    # Add a timer to prevent playing the sound effect too frequently
-                    if pygame.time.get_ticks() - last_hit_time > 1000:  # 1000 milliseconds = 1 second
-                        # Play the random damage sound effect
-                        music = random.choice(['1', '2', '3', '4', '5'])
-                        sound = str(current_path) + "/assets/sound_effect/damage_sound/" + music + ".mp3"
-                        pygame.mixer.Sound(sound).play()
-                        last_hit_time = pygame.time.get_ticks()
-                        player.health -= 20  # Reduce player health on collision
+            zombie.check_for_player(player)
+            zombie.update_direction()
+            zombie.move_towards_player(player, walls)
+
                 
 
         # Draw bullets
@@ -321,8 +313,8 @@ def main():
         darkness.fill((0, 0, 0, 250))
 
         # Blit the torchlight effect onto the darkness overlay
-        torch_x = player.x + PLAYER_SIZE // 2 - torch_radius + camera.camera.topleft[0]
-        torch_y = player.y + PLAYER_SIZE // 2 - torch_radius + camera.camera.topleft[1]
+        torch_x = player.x + PLAYER_SIZE // 2 - TORCH_RADIUS + camera.camera.topleft[0]
+        torch_y = player.y + PLAYER_SIZE // 2 - TORCH_RADIUS + camera.camera.topleft[1]
         
         darkness.blit(torch_surface, (torch_x, torch_y), special_flags=pygame.BLEND_RGBA_SUB)
 
@@ -330,12 +322,12 @@ def main():
         screen.blit(darkness, (0, 0))
 
         # Draw HUD (ammo, health)
-        ammo_text = font.render(f"Ammo: {gun_info[player.current_gun]['ammo']}", True, WHITE)
+        ammo_text = font.render(f"Total: {player.gun_info[player.current_gun]['ammo']}", True, WHITE)
         health_text = font.render(f"Health: {player.health}", True, WHITE)
         screen.blit(ammo_text, (10, 10))
         screen.blit(health_text, (10, 50))
 
-        ammo_text = f"{gun_info[player.current_gun]['remaining_ammo']} / {gun_info[player.current_gun]['ammo']}"
+        ammo_text = f"Ammo : {player.gun_info[player.current_gun]['remaining_ammo']} "
         screen.blit(font.render(ammo_text, True, WHITE), (actual_screen_width // 2, 10))
 
         # display the zombie in area
@@ -367,13 +359,14 @@ def main():
             if keys[pygame.K_r]:
                 # Reset game state
                 walls, player_start, zombies, pickups, guns, dead_body, blood = create_map(current_level)
-                player = Player(actual_screen_width , actual_screen_height)
+                player = Player(actual_screen_width , actual_screen_height, gun_info)
+
                 player.x, player.y = player_start  # Set player's starting position again
-                gun_info = unchanged_details # Reset ammo counts
                 game_over = False
                 won = False
                 death_sound_played = False
                 dead_zombie_list = []
+
                 
                 # Play the background music again
                 loose_sound.stop()
