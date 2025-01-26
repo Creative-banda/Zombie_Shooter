@@ -241,5 +241,6 @@ class Zombie(pygame.sprite.Sprite):
             pygame.mixer.Sound(str(current_path) + "/assets/sound_effect/alert.mp3").play()
             self.seen_audio = True
 
+        self.isPlayerSeen = True
 
         return True
