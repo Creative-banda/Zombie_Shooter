@@ -64,8 +64,8 @@ class Zombie(pygame.sprite.Sprite):
                 
                 # Check collision with walls
                 direct_path_blocked = False
-                for wall, _ in walls:  # Unpack the tuple into wall and _ (no need for the second element)
-                    if (new_x + ZOMBIE_SIZE > wall.x and 
+                for wall, _ in walls:  # Unpack the tuple into wall and _ (no need for the second element   )
+                    if (new_x + ZOMBIE_SIZE > wall.x and        
                         new_x < wall.x + CELL_SIZE_SCALED and
                         new_y + ZOMBIE_SIZE > wall.y and 
                         new_y < wall.y + CELL_SIZE_SCALED):

@@ -219,10 +219,12 @@ def main():
 
     while running:    
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.QUIT :
                 running = False
                 
             keys = pygame.key.get_pressed()
+            if keys[pygame.K_ESCAPE]:
+                running = False
             
             if keys[pygame.K_SPACE]:
                 player.shoot()
