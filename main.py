@@ -1,8 +1,8 @@
-import pygame, copy
-from zombie import Zombie
+import pygame
 import random, json
-from zombie_player import Player
-from zombie_settings import *
+from extra.zombie_player import Player
+from extra.zombie import Zombie
+from extra.zombie_settings import *
 
 # Initialize Pygame
 pygame.init()
@@ -16,7 +16,7 @@ pygame.display.set_caption("Zombie Shooter")
 
 background_music.play(-1)  # Play the background music on loop
 
-
+ 
 
 class Camera:
     

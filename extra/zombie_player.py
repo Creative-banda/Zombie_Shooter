@@ -1,7 +1,11 @@
 import pygame
 import random, copy
-import os, math, pathlib
-from zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, PLAYER_SIZE, BULLET_SPEED, PLAYER_SPEED, walk_sound, IMAGES_DIR, SOUNDS_DIR
+import os, math
+from extra.zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, PLAYER_SIZE, BULLET_SPEED, PLAYER_SPEED, walk_sound, IMAGES_DIR, SOUNDS_DIR
+
+
+print("Player Class Loaded")
+
 pygame.mixer.init()
 
 
@@ -10,13 +14,6 @@ ANIMATION_COOLDOWN = 100
 # Shotgun settings
 BULLET_SPREAD = 45  # Degrees of spread
 BULLET_COUNT = 6  # Number of bullets per shotgun shot
-
-# Sound effects
-current_path = pathlib.Path().absolute()
-
-
-
-# Gun information
 
 
 class Player():
@@ -43,8 +40,8 @@ class Player():
         self.health = 100
         self.bullets = []
         self.current_gun = "handgun"  # Default gun
-        self.isShotgun = False
-        self.isRifle = False
+        self.isShotgun = True
+        self.isRifle = True
 
         # Initialize animation dictionary
         self.animation_dict = {}
@@ -149,7 +146,8 @@ class Player():
 
     def shoot(self):
         if self.gun_info[self.current_gun]["remaining_ammo"] <= 0 and pygame.time.get_ticks() - self.animation_cool_down > 500:
-            pygame.mixer.Sound(f'{SOUNDS_DIR}/gun_sound/empty_gun.mp3').play()
+            pygame.mixer.Sound(SOUNDS_DIR / 'gun_sound' / 'empty_gun.mp3').play()
+
             self.animation_cool_down = pygame.time.get_ticks()
             return
         if self.can_shoot and not self.isReloading and self.gun_info[self.current_gun]["remaining_ammo"] > 0:
@@ -259,7 +257,7 @@ class Player():
                         # Play a random zombie death sound
                         random_sound = ['zombie_die1', 'zombie_die2', 'zombie_die3']
                         sound = random.choice(random_sound)
-                        sound = SOUNDS_DIR+"/zombie_die/" + sound + ".mp3"
+                        sound = SOUNDS_DIR / "zombie_die" / (sound + ".mp3")
                         pygame.mixer.Sound(sound).play()
                         zombies.remove(zombie)  # Remove the zombie
                     bullets_to_remove.append(bullet)  # Remove the bullet

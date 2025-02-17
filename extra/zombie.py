@@ -1,8 +1,8 @@
 import pygame
 import pathlib, math, os, random
-from zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, ZOMBIE_SPEED, PLAYER_SIZE, scale_x, IMAGES_DIR
+from extra.zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, ZOMBIE_SPEED, PLAYER_SIZE, scale_x, IMAGES_DIR, SOUNDS_DIR
 
-
+# Constants
 ANIMATION_COOLDOWN = 100 
 
 current_path = pathlib.Path().absolute()
@@ -187,7 +187,7 @@ class Zombie(pygame.sprite.Sprite):
                 # Play the random damage sound effect
                 if pygame.time.get_ticks() - self.last_hit_time > 1000:  # Limit the sound effect to play every 1 second
                     music = random.choice(['1', '2', '3', '4', '5'])
-                    sound = str(current_path) + "/assets/sound_effect/damage_sound/" + music + ".mp3"
+                    sound = f"{SOUNDS_DIR / 'damage_sound'}/{music}.mp3"
                     pygame.mixer.Sound(sound).play()
                     player.health -= 20  # Reduce player health on collision
                     self.last_hit_time = pygame.time.get_ticks()
@@ -237,8 +237,9 @@ class Zombie(pygame.sprite.Sprite):
 
         # If no walls block the line of sight, the zombie can see the player
         if not self.seen_audio and random.choice([True, False]):
-            pygame.mixer.Sound(str(current_path) + "/assets/sound_effect/zombie_see_1.mp3").play()
-            pygame.mixer.Sound(str(current_path) + "/assets/sound_effect/alert.mp3").play()
+            pygame.mixer.Sound(f"{SOUNDS_DIR / 'zombie_see_1'}.mp3").play()
+            pygame.mixer.Sound(f"{SOUNDS_DIR / 'alert'}.mp3").play()
+
             self.seen_audio = True
 
         self.isPlayerSeen = True
