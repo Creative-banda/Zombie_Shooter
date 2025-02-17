@@ -1,6 +1,6 @@
 import pygame
 import pathlib, math, os, random
-from settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, ZOMBIE_SPEED, PLAYER_SIZE, scale_x
+from zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, ZOMBIE_SPEED, PLAYER_SIZE, scale_x, IMAGES_DIR
 
 
 ANIMATION_COOLDOWN = 100 
@@ -29,9 +29,9 @@ class Zombie(pygame.sprite.Sprite):
         for animation in animation_types:
          # Load animation frames
             temp_list = []
-            num_of_frames = len(os.listdir(f'{current_path}/assets/images/zombie/{animation}'))
+            num_of_frames = len(os.listdir(f'{IMAGES_DIR}/zombie/{animation}'))
             for i in range(num_of_frames):  
-                img_path = f'{str(current_path)}/assets/images/zombie/{animation}/skeleton-{animation}_{i}.png' 
+                img_path = f'{IMAGES_DIR}/zombie/{animation}/skeleton-{animation}_{i}.png' 
                 image = pygame.image.load(img_path).convert_alpha()
                 # Scale the image
                 image = pygame.transform.scale(image, (ZOMBIE_SIZE, ZOMBIE_SIZE))

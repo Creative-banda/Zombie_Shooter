@@ -1,8 +1,8 @@
 import pygame, copy
 from zombie import Zombie
 import random, json
-from player import Player
-from settings import *
+from zombie_player import Player
+from zombie_settings import *
 
 # Initialize Pygame
 pygame.init()
@@ -14,7 +14,6 @@ screen = pygame.display.set_mode((actual_screen_width, actual_screen_height))
 pygame.display.set_caption("Zombie Shooter")
 
 
-background_music = pygame.mixer.Sound(f"{current_path}/assets/sound_effect/background_music.mp3")
 background_music.play(-1)  # Play the background music on loop
 
 
@@ -128,7 +127,7 @@ def create_map(level=1):
             elif cell == 11:
                 lis = [0,1,2]
                 random_body = random.choice(lis)
-                img = pygame.image.load(f"{current_path}/assets/images/dead_body/{random_body}.png").convert_alpha()
+                img = pygame.image.load(f"{IMAGES_DIR}/dead_body/{random_body}.png").convert_alpha()
                 
                 # do a random rotate
                 img = pygame.transform.rotate(img, random.randint(0, 360))
@@ -136,7 +135,7 @@ def create_map(level=1):
             elif cell == 12:
                 lis = [1,2,4,5,6]
                 random_body = random.choice(lis)
-                img = pygame.image.load(f"{current_path}/assets/images/blood/{random_body}.png").convert_alpha()
+                img = pygame.image.load(f"{IMAGES_DIR}/blood/{random_body}.png").convert_alpha()
                 
                 # do a random rotate
                 img = pygame.transform.rotate(img, random.randint(0, 360))

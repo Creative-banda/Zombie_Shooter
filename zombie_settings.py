@@ -53,7 +53,7 @@ PLAYER_SPEED = int(2*scale_x)
 # Paths
 current_path = pathlib.Path().absolute()
 
-ASSETS_DIR = str(current_path) + "/assets"
+ASSETS_DIR = str(current_path) + "/zombie_assets"
 
 IMAGES_DIR = ASSETS_DIR + "/images"
 SOUNDS_DIR = ASSETS_DIR + "/sound_effect"
@@ -81,6 +81,8 @@ item_pickup_sound = pygame.mixer.Sound(SOUNDS_DIR + "/collect_item.mp3")
 death_sound = pygame.mixer.Sound(SOUNDS_DIR + "/death.mp3")
 victory_sound = pygame.mixer.Sound(SOUNDS_DIR + "/victory_sound.mp3")
 loose_sound = pygame.mixer.Sound(SOUNDS_DIR + "/loose.mp3")
+walk_sound = pygame.mixer.Sound(SOUNDS_DIR+'/player_walk.mp3')
+background_music = pygame.mixer.Sound(f"{SOUNDS_DIR}/background_music.mp3")
 
 
 # Player Gun Info

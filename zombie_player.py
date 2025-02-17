@@ -1,9 +1,7 @@
 import pygame
 import random, copy
 import os, math, pathlib
-from settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, PLAYER_SIZE, BULLET_SPEED, PLAYER_SPEED, gun_info
-
-
+from zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, PLAYER_SIZE, BULLET_SPEED, PLAYER_SPEED, walk_sound, IMAGES_DIR, SOUNDS_DIR
 pygame.mixer.init()
 
 
@@ -15,8 +13,6 @@ BULLET_COUNT = 6  # Number of bullets per shotgun shot
 
 # Sound effects
 current_path = pathlib.Path().absolute()
-
-walk_sound = pygame.mixer.Sound(str(current_path) +'/assets/sound_effect/player_walk.mp3')
 
 
 
@@ -61,9 +57,9 @@ class Player():
             self.animation_dict[gun] = []  # Initialize an empty list for this gun
             for animation in animation_types:
                 temp_list = []
-                num_of_frames = len(os.listdir(f'{current_path}/assets/images/player/{gun}/{animation}'))
+                num_of_frames = len(os.listdir(f'{IMAGES_DIR}/player/{gun}/{animation}'))
                 for i in range(num_of_frames):
-                    img = pygame.image.load(f'{current_path}/assets/images/player/{gun}/{animation}/{i}.png').convert_alpha()
+                    img = pygame.image.load(f'{IMAGES_DIR}/player/{gun}/{animation}/{i}.png').convert_alpha()
                     img = pygame.transform.scale(img, (PLAYER_SIZE, PLAYER_SIZE))
                     rotated_images = {
                         "up": pygame.transform.rotate(img, 90),
@@ -153,7 +149,7 @@ class Player():
 
     def shoot(self):
         if self.gun_info[self.current_gun]["remaining_ammo"] <= 0 and pygame.time.get_ticks() - self.animation_cool_down > 500:
-            pygame.mixer.Sound(str(current_path) +'/assets/sound_effect/gun_sound/empty_gun.mp3').play()
+            pygame.mixer.Sound(f'{SOUNDS_DIR}/gun_sound/empty_gun.mp3').play()
             self.animation_cool_down = pygame.time.get_ticks()
             return
         if self.can_shoot and not self.isReloading and self.gun_info[self.current_gun]["remaining_ammo"] > 0:
@@ -263,7 +259,7 @@ class Player():
                         # Play a random zombie death sound
                         random_sound = ['zombie_die1', 'zombie_die2', 'zombie_die3']
                         sound = random.choice(random_sound)
-                        sound = str(current_path) +"/assets/sound_effect/zombie_die/" + sound + ".mp3"
+                        sound = SOUNDS_DIR+"/zombie_die/" + sound + ".mp3"
                         pygame.mixer.Sound(sound).play()
                         zombies.remove(zombie)  # Remove the zombie
                     bullets_to_remove.append(bullet)  # Remove the bullet
