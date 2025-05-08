@@ -27,32 +27,21 @@ walk_sound = pygame.mixer.Sound(str(current_path) +'/assets/sound_effect/player_
 # Gun information
 
 gun_info = {
-    "handgun": {
-        "damage": 20,
-        "ammo": 15,
-        "magazine": 6,
-        "cooldown": 0,
-        "remaining_ammo": 6,
-        "sound": str(current_path) +'/assets/sound_effect/gun_sound/handgun.mp3',
-        "reloading_sound" : str(current_path) +'/assets/sound_effect/gun_sound/handgun_reload.mp3'
+    "handgun": { "damage": 20, "ammo": 15, "magazine": 6, "cooldown": 0, "remaining_ammo": 6,
+                "sound": str(current_path) +'/assets/sound_effect/gun_sound/handgun.mp3',
+                "reloading_sound" : str(current_path) +'/assets/sound_effect/gun_sound/handgun_reload.mp3'
     },
     "rifle": {
-        "damage": 50,
-        "ammo": 40,
-        "magazine": 20,
-        "cooldown": 100,
-        "remaining_ammo": 20,
-        "sound": str(current_path) +'/assets/sound_effect/gun_sound/rifle.mp3',
+        "damage": 50, "ammo": 40,
+        "magazine": 20, "cooldown": 100,
+        "remaining_ammo": 20, "sound": str(current_path) +'/assets/sound_effect/gun_sound/rifle.mp3',
         "reloading_sound" : str(current_path) +'/assets/sound_effect/gun_sound/rifle_reload.mp3'
 
     },
     "shotgun": {
-        "damage": 100,
-        "ammo": 10,
-        "magazine": 2,
-        "cooldown": 1000,
-        "remaining_ammo": 2,
-        "sound": str(current_path) +'/assets/sound_effect/gun_sound/shotgun_shot.mp3',
+        "damage": 100, "ammo": 10,
+        "magazine": 2, "cooldown": 1000,
+        "remaining_ammo": 2, "sound": str(current_path) +'/assets/sound_effect/gun_sound/shotgun_shot.mp3',
         "reloading_sound" : str(current_path) +'/assets/sound_effect/gun_sound/shotgun_reload.mp3'
 
     }
