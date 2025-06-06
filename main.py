@@ -10,7 +10,6 @@ pygame.mixer.init()
 # take current working dir
 current_path = pathlib.Path().absolute()
 
-
 # Constants
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
@@ -28,13 +27,10 @@ GRAY = (128, 128, 128) # Currently no use but maybe in future we can use it
 
 torch_radius = 180
 
-
 # player background music
-
 pygame.mixer.music.load(str(current_path) +'/assets/sound_effect/background_music.mp3')
 pygame.mixer.music.play(-1, 0.0)
 pygame.mixer.music.set_volume(0.5)
-
 
 
 # Load images
@@ -94,7 +90,6 @@ class Camera:
         y = -target.rect.centery + int(self.height / 2)
         self.camera = pygame.Rect(x, y, self.width, self.height)
 
-
 class Wall:
     def __init__(self, x, y, image, health=100):
         self.x = x
@@ -119,7 +114,6 @@ class Wall:
             return True
         return False
 
-
 class PickUp:
     def __init__(self, x, y, image, height, width, amount=5):
         self.x = x
@@ -136,7 +130,6 @@ class PickUp:
             screen.blit(self.image, camera.apply(self))  # Apply camera offset
         else:
             screen.blit(self.image, (self.x, self.y))  # Default rendering without camera
-
 
 def create_map(level=1):
     walls = []
@@ -199,7 +192,6 @@ def create_map(level=1):
     
     return walls, player_start, zombies, pickups, guns, dead_body, blood
 
-
 def check_pickups(player, pickups, guns):
     # Check for ammo pickups
     for ammo,ammotype in pickups["ammo"]:
@@ -232,7 +224,6 @@ def check_pickups(player, pickups, guns):
             guns.remove((gun, gun_type))  # Remove the pickup
             gun_pickup_sound.play()
 
-
 def create_fading_torch(radius):
     torch_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
     for i in range(radius, 0, -1):
@@ -240,10 +231,6 @@ def create_fading_torch(radius):
         color = (0, 0, 0, 255 - alpha)  # Darken towards the edge
         pygame.draw.circle(torch_surface, color, (radius, radius), i)
     return torch_surface
-
-
-
-
 
 def main():
     global gun_info
@@ -350,8 +337,6 @@ def main():
         for dead_zombie in dead_zombie_list:
             screen.blit(dead_zombie_image, camera.apply(dead_zombie))
             
-
-
         # Draw player
         player.draw(screen, camera)
 
@@ -409,7 +394,6 @@ def main():
         zombie_text = font.render(f"Zombies: {len(zombies)}", True, WHITE)
         screen.blit(zombie_text, (WINDOW_WIDTH - text_width, 10))
         
-        
         # Display game FPS in the bottom left corner
         
         fps_text = font.render(f"FPS: {int(clock.get_fps())}", True, WHITE)
@@ -465,9 +449,7 @@ def main():
                 victory_sound_played = False 
                 dead_zombie_list = []
             
-            
-        
-        
+
         # Update the display
         pygame.display.flip()
         clock.tick(FPS)
