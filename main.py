@@ -8,15 +8,11 @@ from extra.zombie_settings import *
 pygame.init()
 pygame.mixer.init()
 
-
 # Create the screen with the device resolution
 screen = pygame.display.set_mode((actual_screen_width, actual_screen_height))
 pygame.display.set_caption("Zombie Shooter")
 
-
 background_music.play(-1)  # Play the background music on loop
-
- 
 
 class Camera:
     
@@ -397,7 +393,6 @@ def main():
         clock.tick(FPS)
 
     pygame.quit()
-
 
 if __name__ == "__main__":
     main()
