@@ -35,6 +35,10 @@ class Camera:
         y = -target.rect.centery + int(self.height / 2)
         self.camera = pygame.Rect(x, y, self.width, self.height)
 
+    def is_visible(self, target_rect):
+        viewport = pygame.Rect(-self.camera.x, -self.camera.y, self.width, self.height)
+        return viewport.colliderect(target_rect)
+
 
 
 class Wall:
@@ -344,7 +348,8 @@ def main():
 
         # Draw walls
         for wall in walls:
-            wall[0].draw(screen, camera)
+            if camera.is_visible(wall[0].rect):
+                wall[0].draw(screen, camera)
 
         # Draw pickups
         for ammo,_ in pickups["ammo"]:
@@ -376,7 +381,8 @@ def main():
         # Draw zombies
         for zombie in zombies:
             zombie.move_towards_player(player, walls)
-            zombie.draw(screen, camera)
+            if camera.is_visible(zombie.rect):
+                zombie.draw(screen, camera)
             
             # Check for zombie collision with player
             if (zombie.x < player.x + PLAYER_SIZE and zombie.x + ZOMBIE_SIZE > player.x and
