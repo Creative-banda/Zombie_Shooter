@@ -1,7 +1,7 @@
 import pygame
 import random, copy
 import os, math
-from extra.zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, PLAYER_SIZE, BULLET_SPEED, PLAYER_SPEED, walk_sound, IMAGES_DIR, SOUNDS_DIR
+from extra.zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, PLAYER_SIZE, BULLET_SIZE, BULLET_SPEED, PLAYER_SPEED, walk_sound, IMAGES_DIR, SOUNDS_DIR, BASE_FPS
 
 
 print("Player Class Loaded")
@@ -89,28 +89,30 @@ class Player():
             if new_action != 3:
                 self.can_shoot = True
 
-    def move(self, walls):
+    def move(self, walls, dt):
         keys = pygame.key.get_pressed()
         new_x, new_y = self.x, self.y
         is_moving = False
 
+        move_speed = PLAYER_SPEED * dt * BASE_FPS
+
         if keys[pygame.K_w]:
-            new_y -= PLAYER_SPEED
+            new_y -= move_speed
             self.direction = "up"
             is_moving = True
                 
         elif keys[pygame.K_s]:
-            new_y += PLAYER_SPEED
+            new_y += move_speed
             self.direction = "down"
             is_moving = True
                 
         elif keys[pygame.K_a]:
-            new_x -= PLAYER_SPEED
+            new_x -= move_speed
             self.direction = "left"
             is_moving = True
                 
         elif keys[pygame.K_d]:
-            new_x += PLAYER_SPEED
+            new_x += move_speed
             self.direction = "right"
             is_moving = True
 
@@ -224,25 +226,36 @@ class Player():
             
 
 
-    def update_bullets(self, walls, zombies, dead_zombie_list):
+    def update_bullets(self, walls, zombies, dead_zombie_list, dt, wall_grid=None, zombie_grid=None):
         bullets_to_remove = []
+        step = dt * BASE_FPS
         for bullet in self.bullets:
-            bullet["x"] += bullet["dx"]
-            bullet["y"] += bullet["dy"]
+            bullet["x"] += bullet["dx"] * step
+            bullet["y"] += bullet["dy"] * step
 
             # Check for collisions with walls
-            for wall, wall_type in walls:
+            bullet_rect = pygame.Rect(
+                int(bullet["x"] - BULLET_SIZE),
+                int(bullet["y"] - BULLET_SIZE),
+                int(BULLET_SIZE * 2),
+                int(BULLET_SIZE * 2),
+            )
+            walls_to_check = wall_grid.query_rect(bullet_rect) if wall_grid else walls
+            for wall, wall_type in walls_to_check:
                 if (bullet["x"] > wall.x and bullet["x"] < wall.x + CELL_SIZE_SCALED and
                     bullet["y"] > wall.y and bullet["y"] < wall.y + CELL_SIZE_SCALED):
                     bullets_to_remove.append(bullet)
                     if wall_type == "breakable":
                         isbreak = wall.take_damage(self.gun_info[self.current_gun]['damage'])  # Reduce wall health
                         if isbreak:
+                            if wall_grid:
+                                wall_grid.remove((wall, wall_type), wall.rect)
                             walls.remove((wall, wall_type))
                     break
 
             # Check for collisions with zombies
-            for zombie in zombies[:]:
+            zombies_to_check = zombie_grid.query_rect(bullet_rect) if zombie_grid else zombies
+            for zombie in zombies_to_check:
                 if (bullet["x"] > zombie.x and bullet["x"] < zombie.x + ZOMBIE_SIZE and
                     bullet["y"] > zombie.y and bullet["y"] < zombie.y + ZOMBIE_SIZE):
                     zombie.health -= self.gun_info[self.current_gun]['damage']  # Reduce zombie health
@@ -259,7 +272,10 @@ class Player():
                         sound = random.choice(random_sound)
                         sound = SOUNDS_DIR / "zombie_die" / (sound + ".mp3")
                         pygame.mixer.Sound(sound).play()
-                        zombies.remove(zombie)  # Remove the zombie
+                        if zombie_grid:
+                            zombie_grid.remove(zombie, zombie.rect)
+                        if zombie in zombies:
+                            zombies.remove(zombie)  # Remove the zombie
                     bullets_to_remove.append(bullet)  # Remove the bullet
                     break
 

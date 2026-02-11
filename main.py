@@ -3,6 +3,7 @@ import random, json
 from extra.zombie_player import Player
 from extra.zombie import Zombie
 from extra.zombie_settings import *
+from extra.spatial_grid import SpatialGrid
 
 # Initialize Pygame
 pygame.init()
@@ -31,6 +32,22 @@ class Camera:
         y = -target.rect.centery + int(self.height / 2)
         self.camera.x += (x - self.camera.x) * 0.02  # Smoothly move the camera to the target
         self.camera.y += (y - self.camera.y) * 0.02
+
+
+
+def get_camera_view_rect(camera, padding=0):
+    # World-space rect for visible area (with padding to reduce pop-in)
+    return pygame.Rect(
+        int(-camera.camera.x - padding),
+        int(-camera.camera.y - padding),
+        int(camera.width + padding * 2),
+        int(camera.height + padding * 2),
+    )
+
+def build_wall_grid(walls):
+    grid = SpatialGrid(CELL_SIZE_SCALED)
+    grid.build(walls, lambda item: item[0].rect)
+    return grid
 
 class Wall:
     def __init__(self, x, y, image, health=100):
@@ -141,9 +158,11 @@ def create_map(level=1):
     
     return walls, player_start, zombies, pickups, guns, dead_body, blood
 
-def check_pickups(player, pickups, guns):
+def check_pickups(player, pickups, guns, logic_rect=None):
     # Check for ammo pickups
     for ammo,ammotype in pickups["ammo"]:
+        if logic_rect and not logic_rect.colliderect(ammo.rect):
+            continue
         if (player.x < ammo.x + 10 and player.x + PLAYER_SIZE > ammo.x and
             player.y < ammo.y + 10 and player.y + PLAYER_SIZE > ammo.y):
             if ammotype == "handgun":
@@ -157,6 +176,8 @@ def check_pickups(player, pickups, guns):
 
     # Check for health pickups
     for health in pickups["health"][:]:
+        if logic_rect and not logic_rect.colliderect(health.rect):
+            continue
         if (player.x < health.x + 10 and player.x + PLAYER_SIZE > health.x and
             player.y < health.y + 10 and player.y + PLAYER_SIZE > health.y and player.health < 100):
             player.health = min(player.health + 40, 100)  # Add health, max 100
@@ -164,6 +185,8 @@ def check_pickups(player, pickups, guns):
             item_pickup_sound.play()
     
     for gun, gun_type in guns[:]:
+        if logic_rect and not logic_rect.colliderect(gun.rect):
+            continue
 
         if (player.x < gun.x + 10 and player.x + PLAYER_SIZE > gun.x and player.y < gun.y + 10 and player.y + PLAYER_SIZE > gun.y):
             if gun_type == "akm":
@@ -188,6 +211,8 @@ def main():
     # Setting all the necessary variables to start the game
     clock = pygame.time.Clock()
     walls, player_start, zombies, pickups, guns, dead_body, blood = create_map(current_level)
+    wall_grid = build_wall_grid(walls)
+    zombie_grid = SpatialGrid(ZOMBIE_SIZE)
     
     player = Player(actual_screen_width , actual_screen_height, gun_info)
 
@@ -209,10 +234,12 @@ def main():
     
     # Generate the flashlight gradient
     torch_surface = create_fading_torch(TORCH_RADIUS)
+    darkness = pygame.Surface((actual_screen_width , actual_screen_height), pygame.SRCALPHA)
     
     dead_zombie_list = []
 
     while running:    
+        dt = clock.tick(0) / 1000.0
         for event in pygame.event.get():
             if event.type == pygame.QUIT :
                 running = False
@@ -234,20 +261,23 @@ def main():
 
         # Clear the screen
         screen.blit(bg_image, camera.apply(walls[0][0]))  # Apply camera offset to the background image
+
+        query_padding = int(CELL_SIZE_SCALED * 2)
         
         if not game_over:
-            # Check for pickups
-            check_pickups(player, pickups, guns)
-
             # Update the camera to follow the player
             camera.update(player)
 
-            # Move the player
-            player.move( walls)
+            # Move the player (only check nearby walls)
+            player_rect = pygame.Rect(player.x, player.y, PLAYER_SIZE, PLAYER_SIZE)
+            player_query = player_rect.inflate(query_padding, query_padding)
+            near_walls = wall_grid.query_rect(player_query)
+            player.move(near_walls, dt)
             player.update_animation()
 
             # Update bullets
-            player.update_bullets(walls, zombies, dead_zombie_list)
+            zombie_grid.build(zombies, lambda z: z.rect)
+            player.update_bullets(walls, zombies, dead_zombie_list, dt, wall_grid, zombie_grid)
             
             # Check win/lose conditions
             if player.health <= 0:
@@ -257,56 +287,91 @@ def main():
                 won = True
                 game_over = True
 
+        # Build culling rects for visible objects and active logic
+        cull_padding = int(max(CELL_SIZE_SCALED, ZOMBIE_SIZE, PLAYER_SIZE))
+        view_rect = get_camera_view_rect(camera, cull_padding)
+        logic_padding = int(max(actual_screen_width, actual_screen_height))
+        logic_rect = pygame.Rect(
+            int(player.x - logic_padding),
+            int(player.y - logic_padding),
+            int(logic_padding * 2 + PLAYER_SIZE),
+            int(logic_padding * 2 + PLAYER_SIZE),
+        )
+
+        if not game_over:
+            # Check for pickups (only when in logic range)
+            check_pickups(player, pickups, guns, logic_rect)
+
         # Draw walls
-        for wall in walls:
-            wall[0].draw(screen, camera)
+        for wall, _ in walls:
+            if view_rect.colliderect(wall.rect):
+                wall.draw(screen, camera)
 
         # Draw pickups
         for ammo,_ in pickups["ammo"]:
-            ammo.draw(screen, camera)
+            if view_rect.colliderect(ammo.rect):
+                ammo.draw(screen, camera)
 
         for health in pickups["health"]:
-            health.draw(screen, camera)
+            if view_rect.colliderect(health.rect):
+                health.draw(screen, camera)
         
         # Draw blood
         for bloods in blood:
-            bloods.draw(screen, camera)
+            if view_rect.colliderect(bloods.rect):
+                bloods.draw(screen, camera)
             
         # Draw dead body
         for body in dead_body:
-            body.draw(screen, camera)
+            if view_rect.colliderect(body.rect):
+                body.draw(screen, camera)
         # Draw guns
         for gun,_ in guns:
-            gun.draw(screen, camera)
+            if view_rect.colliderect(gun.rect):
+                gun.draw(screen, camera)
             
         # Draw dead zombie
         for dead_zombie in dead_zombie_list:
-            screen.blit(dead_zombie_image, camera.apply(dead_zombie))
+            if view_rect.colliderect(dead_zombie.rect):
+                screen.blit(dead_zombie_image, camera.apply(dead_zombie))
 
         # Draw player
         player.draw(screen, camera)
 
         # Draw zombies
         for zombie in zombies:
-            # zombie.move_towards_player(player, walls)
-            zombie.draw(screen, camera)
-            zombie.check_for_player(player)
-            zombie.update_direction()
-            zombie.move_towards_player(player, walls)
+            # Keep rect in sync for culling checks
+            zombie.rect.topleft = (zombie.x, zombie.y)
+
+            if not game_over and logic_rect.colliderect(zombie.rect):
+                zombie_query = zombie.rect.inflate(query_padding, query_padding)
+                near_walls = wall_grid.query_rect(zombie_query)
+                los_rect = pygame.Rect(
+                    int(min(zombie.x, player.x)),
+                    int(min(zombie.y, player.y)),
+                    int(abs(zombie.x - player.x) + ZOMBIE_SIZE),
+                    int(abs(zombie.y - player.y) + ZOMBIE_SIZE),
+                )
+                los_walls = wall_grid.query_rect(los_rect)
+                zombie.check_for_player(player)
+                zombie.update_direction()
+                zombie.move_towards_player(player, near_walls, dt, los_walls)
+
+            if view_rect.colliderect(zombie.rect):
+                zombie.draw(screen, camera)
 
                 
 
         # Draw bullets
         for bullet in player.bullets:
-            if camera:
-                bullet_pos = (int(bullet["x"] + camera.camera.x), int(bullet["y"] + camera.camera.y))
-            else:
-                bullet_pos = (int(bullet["x"]), int(bullet["y"]))
-            pygame.draw.circle(screen, RED, bullet_pos, BULLET_SIZE)
-            player.update_bullets(walls, zombies, dead_zombie_list)
+            if view_rect.collidepoint(bullet["x"], bullet["y"]):
+                if camera:
+                    bullet_pos = (int(bullet["x"] + camera.camera.x), int(bullet["y"] + camera.camera.y))
+                else:
+                    bullet_pos = (int(bullet["x"]), int(bullet["y"]))
+                pygame.draw.circle(screen, RED, bullet_pos, BULLET_SIZE)
 
         # Create the darkness overlay
-        darkness = pygame.Surface((actual_screen_width , actual_screen_height), pygame.SRCALPHA)
         darkness.fill((0, 0, 0, 250))
 
         # Blit the torchlight effect onto the darkness overlay
@@ -356,6 +421,8 @@ def main():
             if keys[pygame.K_r]:
                 # Reset game state
                 walls, player_start, zombies, pickups, guns, dead_body, blood = create_map(current_level)
+                wall_grid = build_wall_grid(walls)
+                zombie_grid = SpatialGrid(ZOMBIE_SIZE)
                 player = Player(actual_screen_width , actual_screen_height, gun_info)
 
                 player.x, player.y = player_start  # Set player's starting position again
@@ -381,6 +448,8 @@ def main():
                 screen.blit(winner_text, winner_rect)
             else:
                 walls, player_start, zombies, pickups, guns, dead_body, blood = create_map(current_level)
+                wall_grid = build_wall_grid(walls)
+                zombie_grid = SpatialGrid(ZOMBIE_SIZE)
                 player.x, player.y = player_start  # Set player's starting position again
                 player.is_Walking_Sound = False
                 game_over = False
@@ -390,7 +459,6 @@ def main():
         
         # Update the display
         pygame.display.flip()
-        clock.tick(FPS)
 
     pygame.quit()
 

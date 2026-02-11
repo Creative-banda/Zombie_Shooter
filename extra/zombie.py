@@ -1,6 +1,6 @@
 import pygame
 import pathlib, math, os, random
-from extra.zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, ZOMBIE_SPEED, PLAYER_SIZE, scale_x, IMAGES_DIR, SOUNDS_DIR
+from extra.zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, ZOMBIE_SPEED, PLAYER_SIZE, scale_x, IMAGES_DIR, SOUNDS_DIR, BASE_FPS
 
 # Constants
 ANIMATION_COOLDOWN = 100 
@@ -22,7 +22,7 @@ class Zombie(pygame.sprite.Sprite):
         self.seen_audio = False
 
 
-        # Animation list
+        # Animation list (pre-rotated per direction)
         animation_types = ["move","idle","attack"]
 
         # look for how many images is in the directory
@@ -35,28 +35,35 @@ class Zombie(pygame.sprite.Sprite):
                 image = pygame.image.load(img_path).convert_alpha()
                 # Scale the image
                 image = pygame.transform.scale(image, (ZOMBIE_SIZE, ZOMBIE_SIZE))
-                temp_list.append(image)
+                rotated_images = {
+                    "up": image,
+                    "right": pygame.transform.rotate(image, 270),
+                    "down": pygame.transform.rotate(image, 180),
+                    "left": pygame.transform.rotate(image, 90),
+                }
+                temp_list.append(rotated_images)
             self.animation_list.append(temp_list)
 
         # Current image to display
-        self.image = self.animation_list[self.action][self.frame_index]
         self.direction = "down"  # Default direction
+        self.image = self.animation_list[self.action][self.frame_index][self.direction]
 
         # Add a rect attribute for collision and rendering
         self.rect = pygame.Rect(self.x, self.y, ZOMBIE_SIZE, ZOMBIE_SIZE)
 
-    def move_towards_player(self, player, walls):
+    def move_towards_player(self, player, walls, dt, los_walls=None):
         dx = player.x - self.x
         dy = player.y - self.y
         distance = math.sqrt(dx**2 + dy**2)
 
-        if (self.can_see_player(player, walls) or self.isPlayerSeen) and distance < 200 * scale_x:  # Check if the zombie can see the player
+        if (self.can_see_player(player, walls, los_walls=los_walls) or self.isPlayerSeen) and distance < 200 * scale_x:  # Check if the zombie can see the player
         
             if distance > 10: # Move only if the player is far enough
                     
                 self.update_animation(0)  # Update the zombie's animation to move
-                dx = dx / distance * ZOMBIE_SPEED
-                dy = dy / distance * ZOMBIE_SPEED
+                speed = ZOMBIE_SPEED * dt * BASE_FPS
+                dx = dx / distance * speed
+                dy = dy / distance * speed
                 
                 # Try direct movement first
                 new_x = self.x + dx
@@ -159,15 +166,8 @@ class Zombie(pygame.sprite.Sprite):
             if self.frame_index >= len(self.animation_list[self.action]):
                 self.frame_index = 0
 
-        # Rotate the current frame based on direction
-        if self.direction == "right":
-            self.image = pygame.transform.rotate(self.animation_list[self.action][self.frame_index], 270)
-        elif self.direction == "left":
-            self.image = pygame.transform.rotate(self.animation_list[self.action][self.frame_index], 90)
-        elif self.direction == "down":
-            self.image = pygame.transform.rotate(self.animation_list[self.action][self.frame_index], 180)
-        elif self.direction == "up":
-            self.image = self.animation_list[self.action][self.frame_index]  # No rotation for up
+        # Pick pre-rotated frame based on direction
+        self.image = self.animation_list[self.action][self.frame_index][self.direction]
 
     def draw(self, screen, camera=None):
         # Update the rect position to match the zombie's current position
@@ -203,7 +203,7 @@ class Zombie(pygame.sprite.Sprite):
         self.update_time = pygame.time.get_ticks()
     
 
-    def can_see_player(self, player, walls, vision_angle=160):
+    def can_see_player(self, player, walls, vision_angle=160, los_walls=None):
         """
         Check if the zombie can see the player within a specific angle range.
 
@@ -231,7 +231,8 @@ class Zombie(pygame.sprite.Sprite):
         line = ((self.x, self.y), (player.x, player.y))
 
         # Check for walls blocking the line of sight
-        for wall, _ in walls:  # Extract wall object and type (ignore type here)
+        wall_candidates = los_walls if los_walls is not None else walls
+        for wall, _ in wall_candidates:  # Extract wall object and type (ignore type here)
             if wall.rect.clipline(line):  # If the line intersects with a wall
                 return False  # Zombie cannot see the player
 

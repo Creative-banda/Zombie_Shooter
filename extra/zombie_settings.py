@@ -16,8 +16,8 @@ actual_screen_width, actual_screen_height = pygame.display.get_desktop_sizes()[0
 
 
 # Testing Resolution
-# actual_screen_width = 800
-# actual_screen_height = 600
+actual_screen_width = 800
+actual_screen_height = 600
 
 
 # Scaling Factors
@@ -28,7 +28,9 @@ CELL_SIZE_SCALED = 45 * scale_x
 COLLECT_ITEM_SIZE_SCALED = 20 * scale_x
 
 # General Settings
-FPS = 70
+FPS = 500
+BASE_FPS = 70
+
 MAX_LEVEL = 3  # Maximum number of levels in the game
 
 # Colors
