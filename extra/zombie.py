@@ -1,6 +1,6 @@
 import pygame
 import pathlib, math, os, random
-from extra.zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, ZOMBIE_SPEED, PLAYER_SIZE, scale_x, IMAGES_DIR, SOUNDS_DIR, BASE_FPS
+from extra.zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, ZOMBIE_SPEED, PLAYER_SIZE, scale_x, IMAGES_DIR, SOUNDS_DIR, BASE_FPS, ZOMBIE_ANIMATIONS, SOUND_EFFECTS
 
 # Constants
 ANIMATION_COOLDOWN = 100 
@@ -15,37 +15,15 @@ class Zombie(pygame.sprite.Sprite):
         self.health = 100
         self.frame_index = 0 
         self.update_time = pygame.time.get_ticks()
-        self.animation_list = []
         self.action = 1  # 0: move, 1: idle, 2: attack
         self.last_hit_time = pygame.time.get_ticks()
         self.isPlayerSeen = False
         self.seen_audio = False
 
-
-        # Animation list (pre-rotated per direction)
-        animation_types = ["move","idle","attack"]
-
-        # look for how many images is in the directory
-        for animation in animation_types:
-         # Load animation frames
-            temp_list = []
-            num_of_frames = len(os.listdir(f'{IMAGES_DIR}/zombie/{animation}'))
-            for i in range(num_of_frames):  
-                img_path = f'{IMAGES_DIR}/zombie/{animation}/skeleton-{animation}_{i}.png' 
-                image = pygame.image.load(img_path).convert_alpha()
-                # Scale the image
-                image = pygame.transform.scale(image, (ZOMBIE_SIZE, ZOMBIE_SIZE))
-                rotated_images = {
-                    "up": image,
-                    "right": pygame.transform.rotate(image, 270),
-                    "down": pygame.transform.rotate(image, 180),
-                    "left": pygame.transform.rotate(image, 90),
-                }
-                temp_list.append(rotated_images)
-            self.animation_list.append(temp_list)
-
         # Current image to display
         self.direction = "down"  # Default direction
+        # Use pre-loaded animation list (0: move, 1: idle, 2: attack)
+        self.animation_list = [ZOMBIE_ANIMATIONS[0], ZOMBIE_ANIMATIONS[1], ZOMBIE_ANIMATIONS[2]]
         self.image = self.animation_list[self.action][self.frame_index][self.direction]
 
         # Add a rect attribute for collision and rendering
@@ -69,31 +47,23 @@ class Zombie(pygame.sprite.Sprite):
                 new_x = self.x + dx
                 new_y = self.y + dy
                 
-                # Check collision with walls
+                # Check collision with walls using rect.colliderect
                 direct_path_blocked = False
-                for wall, _ in walls:  # Unpack the tuple into wall and _ (no need for the second element   )
-                    if (new_x + ZOMBIE_SIZE > wall.x and        
-                        new_x < wall.x + CELL_SIZE_SCALED and
-                        new_y + ZOMBIE_SIZE > wall.y and 
-                        new_y < wall.y + CELL_SIZE_SCALED):
+                temp_rect = pygame.Rect(new_x, new_y, ZOMBIE_SIZE, ZOMBIE_SIZE)
+                for wall, _ in walls:
+                    if temp_rect.colliderect(wall.rect):
                         direct_path_blocked = True
                         break
-                
-                # Here is the explanation of the code below first zombie try to move directly towards the player if there is no wall in between them
-                # if there is a wall in between them then zombie will try to move horizontally or vertically towards the player
-                # if both horizontal and vertical movements are blocked then zombie will not move
                 
                 if direct_path_blocked:
                     # Try horizontal movement only
                     new_x = self.x + dx
                     new_y = self.y
+                    temp_rect.topleft = (new_x, new_y)
                     can_move_horizontal = True
                     
                     for wall,_ in walls:
-                        if (new_x + ZOMBIE_SIZE > wall.x and 
-                            new_x < wall.x + CELL_SIZE_SCALED and
-                            new_y + ZOMBIE_SIZE > wall.y and 
-                            new_y < wall.y + CELL_SIZE_SCALED):
+                        if temp_rect.colliderect(wall.rect):
                             can_move_horizontal = False
                             break
                     
@@ -101,13 +71,11 @@ class Zombie(pygame.sprite.Sprite):
                     if not can_move_horizontal:
                         new_x = self.x
                         new_y = self.y + dy
+                        temp_rect.topleft = (new_x, new_y)
                         can_move_vertical = True
                         
                         for wall,_ in walls:
-                            if (new_x + ZOMBIE_SIZE > wall.x and 
-                                new_x < wall.x + CELL_SIZE_SCALED and
-                                new_y + ZOMBIE_SIZE > wall.y and 
-                                new_y < wall.y + CELL_SIZE_SCALED):
+                            if temp_rect.colliderect(wall.rect):
                                 can_move_vertical = False
                                 break
                         
@@ -179,16 +147,13 @@ class Zombie(pygame.sprite.Sprite):
             screen.blit(self.image, (self.x, self.y))  # Default rendering
 
     def check_for_player(self, player):
-        # Check for zombie collision with player
-        if (self.x < player.x + PLAYER_SIZE and self.x + ZOMBIE_SIZE > player.x and
-            self.y < player.y + PLAYER_SIZE and self.y + ZOMBIE_SIZE > player.y):
+        # Check for zombie collision with player using rect.colliderect
+        if self.rect.colliderect(player.rect):
             if player.health > 0:
                 self.update_animation(2)  # Update the zombie's animation to attack
-                # Play the random damage sound effect
-                if pygame.time.get_ticks() - self.last_hit_time > 1000:  # Limit the sound effect to play every 1 second
-                    music = random.choice(['1', '2', '3', '4', '5'])
-                    sound = f"{SOUNDS_DIR / 'damage_sound'}/{music}.mp3"
-                    pygame.mixer.Sound(sound).play()
+                # Play the random damage sound effect from pre-loaded registry
+                if pygame.time.get_ticks() - self.last_hit_time > 1000:
+                    random.choice(SOUND_EFFECTS["damage"]).play()
                     player.health -= 20  # Reduce player health on collision
                     self.last_hit_time = pygame.time.get_ticks()
 
@@ -206,11 +171,6 @@ class Zombie(pygame.sprite.Sprite):
     def can_see_player(self, player, walls, vision_angle=160, los_walls=None):
         """
         Check if the zombie can see the player within a specific angle range.
-
-        :param player: Player object containing x and y attributes
-        :param walls: List of tuples containing Wall objects and wall types
-        :param vision_angle: The vision angle (in degrees) within which the zombie can see
-        :return: True if the zombie can see the player, False otherwise
         """
         # Calculate the direction vector from the zombie to the player
         dx = player.x - self.x
@@ -232,17 +192,15 @@ class Zombie(pygame.sprite.Sprite):
 
         # Check for walls blocking the line of sight
         wall_candidates = los_walls if los_walls is not None else walls
-        for wall, _ in wall_candidates:  # Extract wall object and type (ignore type here)
+        for wall, _ in wall_candidates:
             if wall.rect.clipline(line):  # If the line intersects with a wall
                 return False  # Zombie cannot see the player
 
         # If no walls block the line of sight, the zombie can see the player
         if not self.seen_audio and random.choice([True, False]):
-            pygame.mixer.Sound(f"{SOUNDS_DIR / 'zombie_see_1'}.mp3").play()
-            pygame.mixer.Sound(f"{SOUNDS_DIR / 'alert'}.mp3").play()
-
+            SOUND_EFFECTS["zombie_see"].play()
+            SOUND_EFFECTS["alert"].play()
             self.seen_audio = True
 
         self.isPlayerSeen = True
-
         return True

@@ -10,7 +10,8 @@ pygame.init()
 pygame.mixer.init()
 
 # Create the screen with the device resolution
-screen = pygame.display.set_mode((actual_screen_width, actual_screen_height))
+# Note: screen is already created in zombie_settings.py but we can redefine it here if needed
+# though using the one from zombie_settings.py is better for .convert() consistency.
 pygame.display.set_caption("Zombie Shooter")
 
 background_music.play(-1)  # Play the background music on loop
@@ -53,15 +54,12 @@ class Wall:
     def __init__(self, x, y, image, health=100):
         self.x = x
         self.y = y
-        self.image = image
         self.health = health  # Health of the wall
-        self.rect = pygame.Rect(x, y, CELL_SIZE_SCALED, CELL_SIZE_SCALED)  # Define the rectangle for collision and placement
-        self.image = pygame.transform.scale(self.image, (CELL_SIZE_SCALED, CELL_SIZE_SCALED))  # Scale the image to the cell size
+        self.rect = pygame.Rect(x, y, CELL_SIZE_SCALED, CELL_SIZE_SCALED)
+        # Use pre-scaled image or scale it once
+        self.image = pygame.transform.scale(image, (CELL_SIZE_SCALED, CELL_SIZE_SCALED)).convert_alpha()
 
     def draw(self, screen, camera=None):
-        # Update the rect position to match the wall's current position
-        self.rect.topleft = (self.x, self.y)
-        
         if camera:
             screen.blit(self.image, camera.apply(self))  # Apply camera offset
         else:
@@ -80,8 +78,7 @@ class PickUp:
         self.y = y
         self.height = height
         self.width = width
-        self.image = image.convert_alpha()
-        self.image = pygame.transform.scale(self.image, (self.width, self.height))  # Scale the image to the cell size
+        self.image = pygame.transform.scale(image, (self.width, self.height)).convert_alpha()
         self.rect = self.image.get_rect(topleft=(x, y))  # Add rect for camera compatibility
 
     def draw(self, screen, camera=None):
@@ -91,7 +88,7 @@ class PickUp:
             screen.blit(self.image, (self.x, self.y))  # Default rendering without camera
 
 def create_map(level=1):
-    global  bg_image
+    global bg_image
 
     walls = []
     zombies = []
@@ -108,9 +105,8 @@ def create_map(level=1):
     height = len(maze_layout)
     width = len(maze_layout[0])
 
-    bg_image = pygame.transform.scale(bg_image, (width * CELL_SIZE_SCALED, height * CELL_SIZE_SCALED))
+    bg_image = pygame.transform.scale(bg_image, (width * CELL_SIZE_SCALED, height * CELL_SIZE_SCALED)).convert()
 
-    
     for y, row in enumerate(maze_layout):
         for x, cell in enumerate(row):
             
@@ -140,68 +136,68 @@ def create_map(level=1):
             elif cell == 11:
                 lis = [0,1,2]
                 random_body = random.choice(lis)
-                img = pygame.image.load(f"{IMAGES_DIR}/dead_body/{random_body}.png").convert_alpha()
-                
+                img = load_image(f"{IMAGES_DIR}/dead_body/{random_body}.png")
                 # do a random rotate
                 img = pygame.transform.rotate(img, random.randint(0, 360))
                 dead_body.append(PickUp(world_x, world_y, img, PLAYER_SIZE, PLAYER_SIZE))
             elif cell == 12:
                 lis = [1,2,4,5,6]
                 random_body = random.choice(lis)
-                img = pygame.image.load(f"{IMAGES_DIR}/blood/{random_body}.png").convert_alpha()
-                
+                img = load_image(f"{IMAGES_DIR}/blood/{random_body}.png")
                 # do a random rotate
                 img = pygame.transform.rotate(img, random.randint(0, 360))
                 blood.append(PickUp(world_x, world_y, img, PLAYER_SIZE * 2, PLAYER_SIZE * 2))
-            
-                
     
     return walls, player_start, zombies, pickups, guns, dead_body, blood
 
-def check_pickups(player, pickups, guns, logic_rect=None):
+def check_pickups(player, pickups, guns, logic_rect=None, static_grid=None):
     # Check for ammo pickups
-    for ammo,ammotype in pickups["ammo"]:
+    for item in pickups["ammo"][:]:
+        ammo, ammotype = item
         if logic_rect and not logic_rect.colliderect(ammo.rect):
             continue
-        if (player.x < ammo.x + 10 and player.x + PLAYER_SIZE > ammo.x and
-            player.y < ammo.y + 10 and player.y + PLAYER_SIZE > ammo.y):
+        if player.rect.colliderect(ammo.rect):
             if ammotype == "handgun":
                 player.gun_info['handgun']['ammo'] += 15
             elif ammotype == "rifle":
                 player.gun_info['rifle']['ammo'] += 20
             elif ammotype == "shotgun":
                 player.gun_info['shotgun']['ammo'] += 10
-            pickups["ammo"].remove((ammo, ammotype))  # Remove the pickup
+            pickups["ammo"].remove(item)
+            if static_grid:
+                static_grid.remove(ammo, ammo.rect)
             item_pickup_sound.play()
 
     # Check for health pickups
     for health in pickups["health"][:]:
         if logic_rect and not logic_rect.colliderect(health.rect):
             continue
-        if (player.x < health.x + 10 and player.x + PLAYER_SIZE > health.x and
-            player.y < health.y + 10 and player.y + PLAYER_SIZE > health.y and player.health < 100):
-            player.health = min(player.health + 40, 100)  # Add health, max 100
-            pickups["health"].remove(health)  # Remove the pickup
+        if player.rect.colliderect(health.rect) and player.health < 100:
+            player.health = min(player.health + 40, 100)
+            pickups["health"].remove(health)
+            if static_grid:
+                static_grid.remove(health, health.rect)
             item_pickup_sound.play()
     
-    for gun, gun_type in guns[:]:
+    for item in guns[:]:
+        gun, gun_type = item
         if logic_rect and not logic_rect.colliderect(gun.rect):
             continue
-
-        if (player.x < gun.x + 10 and player.x + PLAYER_SIZE > gun.x and player.y < gun.y + 10 and player.y + PLAYER_SIZE > gun.y):
+        if player.rect.colliderect(gun.rect):
             if gun_type == "akm":
                 player.isRifle = True
             elif gun_type == "shotgun":
                 player.isShotgun = True
-            guns.remove((gun, gun_type))  # Remove the pickup
+            guns.remove(item)
+            if static_grid:
+                static_grid.remove(gun, gun.rect)
             gun_pickup_sound.play()
 
 def create_fading_torch(radius):
     torch_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-    # Here Alpha 0 mean fully transparent and 255 mean fully opaque
     for i in range(radius, 0, -1):
-        alpha = int(255 * (i / radius))  # Gradually reduce alpha
-        color = (0, 0, 0, 255 - alpha)  # Darken towards the edge
+        alpha = int(255 * (i / radius))
+        color = (0, 0, 0, 255 - alpha)
         pygame.draw.circle(torch_surface, color, (radius, radius), i)
     return torch_surface
 
@@ -211,12 +207,26 @@ def main():
     # Setting all the necessary variables to start the game
     clock = pygame.time.Clock()
     walls, player_start, zombies, pickups, guns, dead_body, blood = create_map(current_level)
+
+    # Grid for collisions (only walls)
     wall_grid = build_wall_grid(walls)
+    # Grid for rendering all static elements
+    static_grid = SpatialGrid(CELL_SIZE_SCALED * 2)
+    def rebuild_static_grid():
+        static_grid.clear()
+        for w in walls: static_grid.add(w[0], w[0].rect)
+        for ammo, _ in pickups["ammo"]: static_grid.add(ammo, ammo.rect)
+        for h in pickups["health"]: static_grid.add(h, h.rect)
+        for g, _ in guns: static_grid.add(g, g.rect)
+        for b in blood: static_grid.add(b, b.rect)
+        for body in dead_body: static_grid.add(body, body.rect)
+
+    rebuild_static_grid()
+
     zombie_grid = SpatialGrid(ZOMBIE_SIZE)
     
     player = Player(actual_screen_width , actual_screen_height, gun_info)
-
-    player.x, player.y = player_start  # Set player's starting position
+    player.x, player.y = player_start
     running = True
     game_over = False
     won = False
@@ -224,15 +234,12 @@ def main():
     font = pygame.font.Font(None, 36)
     victory_sound_played = False
 
-    # This text_width is used to display the zombie count in the right corner of the screen
     text_for_length = font.render(f"Zombies: {len(zombies)}", True, WHITE)
     text_width = text_for_length.get_width()
     
-    # Initialize the camera
     camera = Camera(actual_screen_width , actual_screen_height, player)
-    bullet_pos = (0, 0)
     
-    # Generate the flashlight gradient
+    # Generate the flashlight gradient once
     torch_surface = create_fading_torch(TORCH_RADIUS)
     darkness = pygame.Surface((actual_screen_width , actual_screen_height), pygame.SRCALPHA)
     
@@ -243,7 +250,7 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT :
                 running = False
-                
+
             keys = pygame.key.get_pressed()
             if keys[pygame.K_ESCAPE]:
                 running = False
@@ -259,18 +266,13 @@ def main():
             elif keys[pygame.K_r]  and not player.isReloading:
                 player.reload()
 
-        # Clear the screen
-        screen.blit(bg_image, camera.apply(walls[0][0]))  # Apply camera offset to the background image
-
-        query_padding = int(CELL_SIZE_SCALED * 2)
-        
+        # Update
         if not game_over:
-            # Update the camera to follow the player
             camera.update(player)
 
-            # Move the player (only check nearby walls)
-            player_rect = pygame.Rect(player.x, player.y, PLAYER_SIZE, PLAYER_SIZE)
-            player_query = player_rect.inflate(query_padding, query_padding)
+            # Move the player
+            player_rect = player.rect
+            player_query = player_rect.inflate(CELL_SIZE_SCALED * 2, CELL_SIZE_SCALED * 2)
             near_walls = wall_grid.query_rect(player_query)
             player.move(near_walls, dt)
             player.update_animation()
@@ -279,7 +281,6 @@ def main():
             zombie_grid.build(zombies, lambda z: z.rect)
             player.update_bullets(walls, zombies, dead_zombie_list, dt, wall_grid, zombie_grid)
             
-            # Check win/lose conditions
             if player.health <= 0:
                 game_over = True
                 player.alive = False
@@ -287,7 +288,9 @@ def main():
                 won = True
                 game_over = True
 
-        # Build culling rects for visible objects and active logic
+        # Rendering
+        screen.blit(bg_image, camera.apply(walls[0][0]))
+
         cull_padding = int(max(CELL_SIZE_SCALED, ZOMBIE_SIZE, PLAYER_SIZE))
         view_rect = get_camera_view_rect(camera, cull_padding)
         logic_padding = int(max(actual_screen_width, actual_screen_height))
@@ -299,38 +302,14 @@ def main():
         )
 
         if not game_over:
-            # Check for pickups (only when in logic range)
-            check_pickups(player, pickups, guns, logic_rect)
+            check_pickups(player, pickups, guns, logic_rect, static_grid)
 
-        # Draw walls
-        for wall, _ in walls:
-            if view_rect.colliderect(wall.rect):
-                wall.draw(screen, camera)
-
-        # Draw pickups
-        for ammo,_ in pickups["ammo"]:
-            if view_rect.colliderect(ammo.rect):
-                ammo.draw(screen, camera)
-
-        for health in pickups["health"]:
-            if view_rect.colliderect(health.rect):
-                health.draw(screen, camera)
-        
-        # Draw blood
-        for bloods in blood:
-            if view_rect.colliderect(bloods.rect):
-                bloods.draw(screen, camera)
+        # Draw static entities from grid
+        visible_static = static_grid.query_rect(view_rect)
+        for entity in visible_static:
+            entity.draw(screen, camera)
             
-        # Draw dead body
-        for body in dead_body:
-            if view_rect.colliderect(body.rect):
-                body.draw(screen, camera)
-        # Draw guns
-        for gun,_ in guns:
-            if view_rect.colliderect(gun.rect):
-                gun.draw(screen, camera)
-            
-        # Draw dead zombie
+        # Draw dead zombies (not in static grid as they change frequently)
         for dead_zombie in dead_zombie_list:
             if view_rect.colliderect(dead_zombie.rect):
                 screen.blit(dead_zombie_image, camera.apply(dead_zombie))
@@ -340,12 +319,13 @@ def main():
 
         # Draw zombies
         for zombie in zombies:
-            # Keep rect in sync for culling checks
+            # Keep rect in sync
             zombie.rect.topleft = (zombie.x, zombie.y)
 
             if not game_over and logic_rect.colliderect(zombie.rect):
-                zombie_query = zombie.rect.inflate(query_padding, query_padding)
+                zombie_query = zombie.rect.inflate(CELL_SIZE_SCALED * 2, CELL_SIZE_SCALED * 2)
                 near_walls = wall_grid.query_rect(zombie_query)
+                # For LOS, use a rect that covers zombie and player
                 los_rect = pygame.Rect(
                     int(min(zombie.x, player.x)),
                     int(min(zombie.y, player.y)),
@@ -360,84 +340,55 @@ def main():
             if view_rect.colliderect(zombie.rect):
                 zombie.draw(screen, camera)
 
-                
-
         # Draw bullets
         for bullet in player.bullets:
+            # Check if bullet is visible
             if view_rect.collidepoint(bullet["x"], bullet["y"]):
-                if camera:
-                    bullet_pos = (int(bullet["x"] + camera.camera.x), int(bullet["y"] + camera.camera.y))
-                else:
-                    bullet_pos = (int(bullet["x"]), int(bullet["y"]))
-                pygame.draw.circle(screen, RED, bullet_pos, BULLET_SIZE)
+                bullet_scr_x = int(bullet["x"] + camera.camera.x)
+                bullet_scr_y = int(bullet["y"] + camera.camera.y)
+                screen.blit(bullet_image, (bullet_scr_x - BULLET_SIZE, bullet_scr_y - BULLET_SIZE))
 
-        # Create the darkness overlay
+        # Darkness effect
         darkness.fill((0, 0, 0, 250))
-
-        # Blit the torchlight effect onto the darkness overlay
         torch_x = player.x + PLAYER_SIZE // 2 - TORCH_RADIUS + camera.camera.topleft[0]
         torch_y = player.y + PLAYER_SIZE // 2 - TORCH_RADIUS + camera.camera.topleft[1]
-        
         darkness.blit(torch_surface, (torch_x, torch_y), special_flags=pygame.BLEND_RGBA_SUB)
-
-        # Apply the darkness overlay to the screen
         screen.blit(darkness, (0, 0))
 
-        # Draw HUD (ammo, health)
+        # HUD
         ammo_text = font.render(f"Total: {player.gun_info[player.current_gun]['ammo']}", True, WHITE)
         health_text = font.render(f"Health: {player.health}", True, WHITE)
         screen.blit(ammo_text, (10, 10))
         screen.blit(health_text, (10, 50))
+        screen.blit(font.render(f"Ammo : {player.gun_info[player.current_gun]['remaining_ammo']} ", True, WHITE), (actual_screen_width // 2, 10))
+        screen.blit(font.render(f"Zombies: {len(zombies)}", True, WHITE), (actual_screen_width - text_width, 10))
+        screen.blit(font.render(f"FPS: {int(clock.get_fps())}", True, WHITE), (10, actual_screen_height - 100))
+        screen.blit(font.render(f"Level: {current_level}", True, WHITE), (actual_screen_width - 100, actual_screen_height - 100))
 
-        ammo_text = f"Ammo : {player.gun_info[player.current_gun]['remaining_ammo']} "
-        screen.blit(font.render(ammo_text, True, WHITE), (actual_screen_width // 2, 10))
-
-        # display the zombie in area
-        zombie_text = font.render(f"Zombies: {len(zombies)}", True, WHITE)
-        screen.blit(zombie_text, (actual_screen_width - text_width, 10))
-        
-        # Display game FPS in the bottom left corner
-        fps_text = font.render(f"FPS: {int(clock.get_fps())}", True, WHITE)
-        screen.blit(fps_text, (10, actual_screen_height - 100))
-        
-        # Display the current level in the bottom right corner
-        level_text = font.render(f"Level: {current_level}", True, WHITE)
-        screen.blit(level_text, (actual_screen_width - 100, actual_screen_height - 100))
-
-
-        # Game over screen
+        # Game over / Win screens
         if not player.alive:
-            if not death_sound_played and not won:  # Play death sound only once
+            if not death_sound_played and not won:
                 death_sound.play()
                 loose_sound.play()
                 death_sound_played = True
-            text = "Game Over! Press 'R' to restart"  
-            game_over_text = font.render(text, True, WHITE)
+            game_over_text = font.render("Game Over! Press 'R' to restart", True, WHITE)
             text_rect = game_over_text.get_rect(center=(actual_screen_width / 2, actual_screen_height / 2))
             screen.blit(game_over_text, text_rect)   
-            # Check for restart input
-            pygame.mixer.music.fadeout(1000)  # Fade out over 2 seconds
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_r]:
-                # Reset game state
+            pygame.mixer.music.fadeout(1000)
+            if pygame.key.get_pressed()[pygame.K_r]:
                 walls, player_start, zombies, pickups, guns, dead_body, blood = create_map(current_level)
                 wall_grid = build_wall_grid(walls)
-                zombie_grid = SpatialGrid(ZOMBIE_SIZE)
+                rebuild_static_grid()
                 player = Player(actual_screen_width , actual_screen_height, gun_info)
-
-                player.x, player.y = player_start  # Set player's starting position again
+                player.x, player.y = player_start
                 game_over = False
                 won = False
                 death_sound_played = False
                 dead_zombie_list = []
-
-                
-                # Play the background music again
                 loose_sound.stop()
                 background_music.play(-1)
                         
         elif won and player.alive:
-            text = "You Win!"
             if not victory_sound_played:
                 victory_sound.play()
                 victory_sound_played = True
@@ -449,15 +400,14 @@ def main():
             else:
                 walls, player_start, zombies, pickups, guns, dead_body, blood = create_map(current_level)
                 wall_grid = build_wall_grid(walls)
-                zombie_grid = SpatialGrid(ZOMBIE_SIZE)
-                player.x, player.y = player_start  # Set player's starting position again
+                rebuild_static_grid()
+                player.x, player.y = player_start
                 player.is_Walking_Sound = False
                 game_over = False
                 won = False
                 victory_sound_played = False 
                 dead_zombie_list = []
         
-        # Update the display
         pygame.display.flip()
 
     pygame.quit()

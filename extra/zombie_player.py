@@ -1,7 +1,7 @@
 import pygame
 import random, copy
 import os, math
-from extra.zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, PLAYER_SIZE, BULLET_SIZE, BULLET_SPEED, PLAYER_SPEED, walk_sound, IMAGES_DIR, SOUNDS_DIR, BASE_FPS
+from extra.zombie_settings import CELL_SIZE_SCALED, ZOMBIE_SIZE, PLAYER_SIZE, BULLET_SIZE, BULLET_SPEED, PLAYER_SPEED, walk_sound, IMAGES_DIR, SOUNDS_DIR, BASE_FPS, PLAYER_ANIMATIONS, SOUND_EFFECTS
 
 
 print("Player Class Loaded")
@@ -30,7 +30,8 @@ class Player():
         self.x = WINDOW_WIDTH // 2
         self.y = WINDOW_HEIGHT // 2
         self.rect = pygame.Rect(self.x, self.y, PLAYER_SIZE, PLAYER_SIZE)
-        self.gun_info = copy.deepcopy(gun_info)  # Create an independent copy
+        # Create an independent copy of gun info, but keep shared sound objects
+        self.gun_info = {k: v.copy() for k, v in gun_info.items()}
 
         # Animation properties
         self.frame_index = 0
@@ -43,29 +44,9 @@ class Player():
         self.isShotgun = True
         self.isRifle = True
 
-        # Initialize animation dictionary
-        self.animation_dict = {}
-
-        # Load animations for each gun
-        gun_types = ["handgun", "rifle", "shotgun"]  # List of all gun types
-        animation_types = ["idle", "move", "reload", "shoot"]  # Animation states
-
-        for gun in gun_types:
-            self.animation_dict[gun] = []  # Initialize an empty list for this gun
-            for animation in animation_types:
-                temp_list = []
-                num_of_frames = len(os.listdir(f'{IMAGES_DIR}/player/{gun}/{animation}'))
-                for i in range(num_of_frames):
-                    img = pygame.image.load(f'{IMAGES_DIR}/player/{gun}/{animation}/{i}.png').convert_alpha()
-                    img = pygame.transform.scale(img, (PLAYER_SIZE, PLAYER_SIZE))
-                    rotated_images = {
-                        "up": pygame.transform.rotate(img, 90),
-                        "down": pygame.transform.rotate(img, 270),
-                        "left": pygame.transform.rotate(img, 180),
-                        "right": img
-                    }
-                    temp_list.append(rotated_images)
-                self.animation_dict[gun].append(temp_list)
+        # Use pre-loaded animation dictionary
+        self.animation_dict = PLAYER_ANIMATIONS
+        self.image = self.animation_dict[self.current_gun][self.action][self.frame_index][self.direction]
 
     def switch_gun(self, gun):
         self.current_gun = gun
@@ -128,11 +109,10 @@ class Player():
                 walk_sound.stop()  # Stop walking sound
                 self.is_Walking_Sound = False
 
-        # Wall collision check
-        for wall in walls:
-            if (new_x + PLAYER_SIZE > wall[0].x and new_x < wall[0].x + CELL_SIZE_SCALED and
-                new_y + PLAYER_SIZE > wall[0].y and new_y < wall[0].y + CELL_SIZE_SCALED):
-                
+        # Wall collision check using Rect.colliderect
+        temp_rect = pygame.Rect(new_x, new_y, PLAYER_SIZE, PLAYER_SIZE)
+        for wall, _ in walls:
+            if temp_rect.colliderect(wall.rect):
                 # turn off the walking sound
                 if self.is_Walking_Sound:
                     walk_sound.stop()
@@ -142,23 +122,23 @@ class Player():
                     new_y = self.y
                 if keys[pygame.K_a] or keys[pygame.K_d]:
                     new_x = self.x
+                break
 
         self.x, self.y = new_x, new_y
         self.rect.topleft = (self.x, self.y)
 
     def shoot(self):
         if self.gun_info[self.current_gun]["remaining_ammo"] <= 0 and pygame.time.get_ticks() - self.animation_cool_down > 500:
-            pygame.mixer.Sound(SOUNDS_DIR / 'gun_sound' / 'empty_gun.mp3').play()
-
+            SOUND_EFFECTS["empty_gun"].play()
             self.animation_cool_down = pygame.time.get_ticks()
             return
+
         if self.can_shoot and not self.isReloading and self.gun_info[self.current_gun]["remaining_ammo"] > 0:
             self.can_shoot = False  # Prevent shooting until animation completes
             if pygame.time.get_ticks() - self.animation_cool_down > self.gun_info[self.current_gun]["cooldown"]:
                 self.update_action(3)  # Shoot animation
                 self.animation_cool_down = pygame.time.get_ticks()
-                pygame.mixer.Sound(self.gun_info[self.current_gun]['sound']).play()
-
+                self.gun_info[self.current_gun]['sound'].play()
 
                 # Calculate bullet direction
                 dx, dy = 0, 0
@@ -203,7 +183,7 @@ class Player():
         if (self.gun_info[self.current_gun]['remaining_ammo'] == self.gun_info[self.current_gun]['magazine']  or self.isReloading or self.gun_info[self.current_gun]['ammo'] <= 0):
             return
         self.update_action(2)  # Reload animation
-        pygame.mixer.Sound(self.gun_info[self.current_gun]['reloading_sound']).play()
+        self.gun_info[self.current_gun]['reloading_sound'].play()
         self.isReloading = True  # Prevent actions while reloading
         self.can_shoot = False  # Prevent shooting during reload
         
@@ -229,21 +209,21 @@ class Player():
     def update_bullets(self, walls, zombies, dead_zombie_list, dt, wall_grid=None, zombie_grid=None):
         bullets_to_remove = []
         step = dt * BASE_FPS
+
+        # Reuse a single Rect for bullet collisions
+        bullet_rect = pygame.Rect(0, 0, BULLET_SIZE * 2, BULLET_SIZE * 2)
+
         for bullet in self.bullets:
             bullet["x"] += bullet["dx"] * step
             bullet["y"] += bullet["dy"] * step
 
+            # Update bullet_rect position
+            bullet_rect.center = (int(bullet["x"]), int(bullet["y"]))
+
             # Check for collisions with walls
-            bullet_rect = pygame.Rect(
-                int(bullet["x"] - BULLET_SIZE),
-                int(bullet["y"] - BULLET_SIZE),
-                int(BULLET_SIZE * 2),
-                int(BULLET_SIZE * 2),
-            )
             walls_to_check = wall_grid.query_rect(bullet_rect) if wall_grid else walls
             for wall, wall_type in walls_to_check:
-                if (bullet["x"] > wall.x and bullet["x"] < wall.x + CELL_SIZE_SCALED and
-                    bullet["y"] > wall.y and bullet["y"] < wall.y + CELL_SIZE_SCALED):
+                if bullet_rect.colliderect(wall.rect):
                     bullets_to_remove.append(bullet)
                     if wall_type == "breakable":
                         isbreak = wall.take_damage(self.gun_info[self.current_gun]['damage'])  # Reduce wall health
@@ -254,24 +234,21 @@ class Player():
                     break
 
             # Check for collisions with zombies
+            if bullet in bullets_to_remove: continue
+
             zombies_to_check = zombie_grid.query_rect(bullet_rect) if zombie_grid else zombies
             for zombie in zombies_to_check:
-                if (bullet["x"] > zombie.x and bullet["x"] < zombie.x + ZOMBIE_SIZE and
-                    bullet["y"] > zombie.y and bullet["y"] < zombie.y + ZOMBIE_SIZE):
+                if bullet_rect.colliderect(zombie.rect):
                     zombie.health -= self.gun_info[self.current_gun]['damage']  # Reduce zombie health
 
-                    # Active the zombie if it's not already
+                    # Activate the zombie if it's not already
                     if not zombie.isPlayerSeen:
                         zombie.isPlayerSeen = True
 
                     if zombie.health <= 0:
-                        
                         dead_zombie_list.append(zombie)
-                        # Play a random zombie death sound
-                        random_sound = ['zombie_die1', 'zombie_die2', 'zombie_die3']
-                        sound = random.choice(random_sound)
-                        sound = SOUNDS_DIR / "zombie_die" / (sound + ".mp3")
-                        pygame.mixer.Sound(sound).play()
+                        # Play a random zombie death sound from pre-loaded registry
+                        random.choice(SOUND_EFFECTS["zombie_die"]).play()
                         if zombie_grid:
                             zombie_grid.remove(zombie, zombie.rect)
                         if zombie in zombies:
@@ -281,7 +258,10 @@ class Player():
 
         # Remove bullets marked for removal
         for bullet in bullets_to_remove:
-            self.bullets.remove(bullet)
+            try:
+                self.bullets.remove(bullet)
+            except ValueError:
+                pass
 
 
     def update_animation(self):
